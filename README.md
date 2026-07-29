@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kylian José — Gestión
 
-## Getting Started
+Sistema web para controlar productos, stock y movimientos de la bodega **Kylian José**.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Next.js 16** (App Router) + **TypeScript**
+- **Tailwind CSS v4** + design system propio con claymorfismo sutil
+- **Supabase** (Postgres + funciones SQL, sin Edge Functions)
+- **Recharts** para gráficos (area / bar)
+- **Montserrat** como fuente global · efecto **Aurora Text** en títulos
+- **xlsx** para exportación a Excel
+- **Modo claro / oscuro** (`next-themes`) + responsive
+
+## Arquitectura
+
+Monolítica y escalable — pensada para agregar backend propio más adelante.
+
+```
+core/           # dominio, servicios, tipos, lib (supabase, utils, formatos)
+presentation/   # componentes de UI y módulos (dashboard, productos, ...)
+app/            # rutas Next.js (App Router)
+database/       # scripts SQL — schema, funciones, seed, instalacion.sql
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Puesta en marcha
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1) **Instalar dependencias**
+```bash
+npm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2) **Variables de entorno** — copia `.env.local.example` a `.env.local`:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://TU-PROYECTO.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
+```
 
-## Learn More
+3) **Base de datos** — abre el SQL Editor de Supabase y ejecuta **de un solo golpe** el archivo:
+```
+database/instalacion.sql
+```
+Esto crea tablas, seeds, funciones y setea la zona horaria a `America/Lima`.
 
-To learn more about Next.js, take a look at the following resources:
+4) **Iniciar**
+```bash
+npm run dev
+```
+Abre <http://localhost:3000>.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Módulos actuales
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Dashboard** — KPIs, gráfico de área (entradas vs salidas), distribución por tipo.
+- **Productos** — CRUD con modales, filtros por tipo y rango de fechas, exportar a Excel, registrar entradas y salidas, historial por producto.
 
-## Deploy on Vercel
+## Convenciones
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Prefijos por módulo: `auth_`, `gen_`, `prd_`.
+- Todas las tablas llevan campos de auditoría (`estado`, `id_usuario_creacion`, `id_usuario_modificacion`, `fecha_creacion`, `fecha_modificacion`).
+- Eliminar = `estado = 0` (soft delete, jamás se menciona en la interfaz).
+- Colores de acción: **verde** crear/guardar, **rojo** eliminar, **ámbar** editar.
