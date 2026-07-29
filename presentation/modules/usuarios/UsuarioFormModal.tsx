@@ -36,7 +36,7 @@ export function UsuarioFormModal({
       return toast.push("error", "Correo inválido.");
     }
     if (!isEdit || password.length > 0) {
-      if (password.length < 6) return toast.push("error", "La contraseña debe tener al menos 6 caracteres.");
+      if (password.length < 8) return toast.push("error", "La contraseña debe tener al menos 8 caracteres.");
       if (password !== password2) return toast.push("error", "Las contraseñas no coinciden.");
     }
 
@@ -84,7 +84,7 @@ export function UsuarioFormModal({
         <Input label={isEdit ? "Nueva contraseña" : "Contraseña"}
           required={!isEdit} type="password"
           value={password} onChange={(e) => setPassword(e.target.value)}
-          hint={isEdit ? "Deja en blanco para conservarla." : "Mínimo 6 caracteres."} />
+          hint={isEdit ? "Deja en blanco para conservarla." : "Mínimo 8 caracteres."} />
         <Input label={isEdit ? "Repetir nueva contraseña" : "Repetir contraseña"}
           required={!isEdit} type="password"
           value={password2} onChange={(e) => setPassword2(e.target.value)} />

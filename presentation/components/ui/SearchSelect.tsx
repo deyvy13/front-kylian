@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
-import { cn } from "@/core/lib/utils";
+import { cn, normalizarTexto } from "@/core/lib/utils";
 
 export type SearchSelectOption = {
   value: string | number;
@@ -39,10 +39,10 @@ export function SearchSelect({
 
   const filtered = useMemo(() => {
     if (!q) return options;
-    const s = q.toLocaleLowerCase("es-PE");
+    const s = normalizarTexto(q);
     return options.filter((o) =>
-      o.label.toLocaleLowerCase("es-PE").includes(s) ||
-      (o.hint ?? "").toLocaleLowerCase("es-PE").includes(s)
+      normalizarTexto(o.label).includes(s) ||
+      normalizarTexto(o.hint ?? "").includes(s)
     );
   }, [options, q]);
 

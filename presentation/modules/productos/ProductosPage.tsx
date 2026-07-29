@@ -21,7 +21,7 @@ import { LABEL_METODO, CHIP_METODO } from "./metodoUi";
 import { PagoFormModal } from "./PagoFormModal";
 import { listarOpciones } from "@/core/services/listas.service";
 import type { Consumo, OpcionLista, Producto, Trabajador } from "@/core/types";
-import { formatPEN, formatDateLima } from "@/core/lib/utils";
+import { coincideBusqueda, formatPEN, formatDateLima } from "@/core/lib/utils";
 import { exportarProductosExcel } from "./exportar";
 import { exportarConsumosExcel } from "./exportar_consumos";
 import { ProductoFormModal } from "./ProductoFormModal";
@@ -99,8 +99,7 @@ function TabProductos() {
 
   const filtrados = useMemo(() => {
     if (!texto) return productos;
-    const q = texto.toLowerCase();
-    return productos.filter((p) => p.nombre.toLowerCase().includes(q));
+    return productos.filter((p) => coincideBusqueda(p.nombre, texto));
   }, [productos, texto]);
 
   const kpis = useMemo(() => {

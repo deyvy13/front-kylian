@@ -5,6 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Normaliza texto para búsqueda: minúsculas, sin tildes, sin diacríticos. */
+export function normalizarTexto(s: string | null | undefined): string {
+  if (!s) return "";
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // marcas diacríticas combinantes
+    .toLocaleLowerCase("es-PE");
+}
+
+/** ¿El texto `hay` contiene a `agu`, ignorando mayúsculas y tildes? */
+export function coincideBusqueda(hay: string | null | undefined, agu: string | null | undefined): boolean {
+  if (!agu) return true;
+  return normalizarTexto(hay).includes(normalizarTexto(agu));
+}
+
 /** Capitaliza la primera letra de cada palabra; el resto en minúscula. */
 export function toTitleCase(value: string): string {
   return value

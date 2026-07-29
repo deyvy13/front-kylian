@@ -75,7 +75,6 @@ export function ConsumoFormModal({
       open={open}
       onClose={onClose}
       title="Registrar consumo"
-      description="El valor se calcula con el precio de venta del producto. Trabajador es opcional salvo en crédito."
       footer={
         <>
           <Button variant="danger" onClick={onClose}>Cancelar</Button>

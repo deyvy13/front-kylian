@@ -85,7 +85,6 @@ export function TrabajadorFormModal({
           value={dni} onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))} placeholder="12345678" />
         <Input label="Labor" value={labor}
           onChange={(e) => setLabor(e.target.value)} placeholder="Ej. Cajera, Almacén, Delivery…"
-          hint="Opcional — puedes usar mayúsculas y minúsculas libremente."
         />
       </div>
     </Modal>

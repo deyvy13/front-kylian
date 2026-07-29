@@ -8,6 +8,6 @@ export async function loginConCorreo(correo: string, password: string): Promise<
   });
   if (error) throw error;
   const arr = (data ?? []) as SessionUser[];
-  if (arr.length === 0) throw new Error("Correo o contraseña incorrectos.");
+  if (arr.length === 0) throw new Error("Credenciales inválidas.");
   return arr[0];
 }

@@ -2,7 +2,7 @@ import { cn } from "@/core/lib/utils";
 import type { HTMLAttributes } from "react";
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("clay p-5 sm:p-6", className)} {...props} />;
+  return <div className={cn("clay p-4 sm:p-6", className)} {...props} />;
 }
 
 export function StatCard({
@@ -25,14 +25,18 @@ export function StatCard({
     warning: "bg-[color:var(--warning)]/12 text-[color:var(--warning)]",
   }[accent];
   return (
-    <Card className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-wider text-foreground/60 font-semibold">{label}</p>
-        <p className="mt-1 text-xl sm:text-2xl font-black tracking-tight truncate">{value}</p>
-        {hint ? <p className="mt-1 text-xs text-foreground/60">{hint}</p> : null}
+    <Card className="flex items-start justify-between gap-2 sm:gap-3 p-3 sm:p-6">
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] sm:text-[11px] uppercase tracking-wider text-foreground/60 font-semibold truncate">
+          {label}
+        </p>
+        <p className="mt-1 text-base sm:text-2xl font-bold tracking-tight truncate leading-tight">
+          {value}
+        </p>
+        {hint ? <p className="mt-1 text-[11px] sm:text-xs text-foreground/60 truncate">{hint}</p> : null}
       </div>
       {icon ? (
-        <div className={cn("grid h-10 w-10 place-items-center rounded-xl shrink-0", accentBg)}>
+        <div className={cn("grid h-7 w-7 sm:h-10 sm:w-10 place-items-center rounded-lg sm:rounded-xl shrink-0", accentBg)}>
           {icon}
         </div>
       ) : null}

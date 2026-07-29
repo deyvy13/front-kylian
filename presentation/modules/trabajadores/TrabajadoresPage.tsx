@@ -9,7 +9,7 @@ import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/
 import { useToast } from "@/presentation/components/ui/Toast";
 import { eliminarTrabajador, listarTrabajadores } from "@/core/services/trabajadores.service";
 import type { Trabajador } from "@/core/types";
-import { formatDateLima } from "@/core/lib/utils";
+import { coincideBusqueda, formatDateLima } from "@/core/lib/utils";
 import { TrabajadorFormModal } from "./TrabajadorFormModal";
 import { ConfirmarEliminarModal } from "@/presentation/modules/productos/ConfirmarEliminarModal";
 
@@ -30,12 +30,11 @@ export function TrabajadoresPage() {
 
   const filtrados = useMemo(() => {
     if (!texto) return trabajadores;
-    const q = texto.toLowerCase();
     return trabajadores.filter((t) =>
-      t.nombres.toLowerCase().includes(q) ||
-      t.apellidos.toLowerCase().includes(q) ||
-      t.dni.includes(q) ||
-      (t.labor ?? "").toLowerCase().includes(q));
+      coincideBusqueda(t.nombres, texto) ||
+      coincideBusqueda(t.apellidos, texto) ||
+      coincideBusqueda(t.dni, texto) ||
+      coincideBusqueda(t.labor, texto));
   }, [trabajadores, texto]);
 
   return (

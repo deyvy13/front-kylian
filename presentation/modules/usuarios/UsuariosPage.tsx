@@ -9,7 +9,7 @@ import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/
 import { useToast } from "@/presentation/components/ui/Toast";
 import { eliminarUsuario, listarUsuarios } from "@/core/services/usuarios.service";
 import type { Usuario } from "@/core/types";
-import { formatDateLima } from "@/core/lib/utils";
+import { coincideBusqueda, formatDateLima } from "@/core/lib/utils";
 import { UsuarioFormModal } from "./UsuarioFormModal";
 import { UsuarioDetalleModal } from "./UsuarioDetalleModal";
 import { ConfirmarEliminarModal } from "@/presentation/modules/productos/ConfirmarEliminarModal";
@@ -35,8 +35,7 @@ export function UsuariosPage() {
 
   const filtrados = useMemo(() => {
     if (!texto) return usuarios;
-    const q = texto.toLowerCase();
-    return usuarios.filter((u) => u.nombre.toLowerCase().includes(q) || u.correo.toLowerCase().includes(q));
+    return usuarios.filter((u) => coincideBusqueda(u.nombre, texto) || coincideBusqueda(u.correo, texto));
   }, [usuarios, texto]);
 
   return (
