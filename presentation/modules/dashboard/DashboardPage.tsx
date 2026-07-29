@@ -63,7 +63,7 @@ export function DashboardPage() {
             <AuroraText>Dashboard</AuroraText>
           </h1>
           <p className="text-sm text-foreground/60 mt-1">
-            Elige el módulo y el rango de fechas aplica a todos los gráficos.
+            Elige el módulo a mostrar y el rango de fechas aplica a todos los gráficos.
           </p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
