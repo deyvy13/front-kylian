@@ -59,8 +59,7 @@ export function UsuariosPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="Usuarios activos" value={usuarios.length} icon={<Users className="h-4 w-4" />} accent="primary" />
-        <StatCard label="Administrador" value="1" icon={<ShieldCheck className="h-4 w-4" />} accent="success"
-          hint="Cuenta demo del sistema" />
+        <StatCard label="Administrador" value="1" icon={<ShieldCheck className="h-4 w-4" />} accent="success"/>
       </div>
 
       <Card>

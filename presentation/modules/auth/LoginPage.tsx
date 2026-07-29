@@ -67,10 +67,6 @@ export function LoginPage() {
           <Button type="submit" variant="success" loading={loading} className="w-full">
             <LogIn className="h-4 w-4" /> Ingresar
           </Button>
-
-          <p className="text-[11px] text-center text-foreground/60 pt-1">
-            Cuenta demo · <span className="font-semibold">admin@kylianjose.local</span> / <span className="font-semibold">admin123</span>
-          </p>
         </form>
       </div>
     </div>

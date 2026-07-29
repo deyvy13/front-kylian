@@ -1,5 +1,6 @@
 "use client";
-import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from "react";
+import { forwardRef, useState, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { cn, toTitleCase } from "@/core/lib/utils";
 
 const base =
@@ -27,28 +28,51 @@ export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { className, label, hint, error, titleCase, onChange, required, ...props },
+  { className, label, hint, error, titleCase, onChange, required, type, ...props },
   ref
 ) {
+  const [visible, setVisible] = useState(false);
+  const isPassword = type === "password";
+  const effectiveType = isPassword ? (visible ? "text" : "password") : type;
+
   return (
     <label className="block space-y-1.5">
       <Label label={label} required={required} />
-      <input
-        ref={ref}
-        required={required}
-        className={cn(base, error && "border-[color:var(--danger)] ring-1 ring-[color:var(--danger)]", className)}
-        onChange={(e) => {
-          if (titleCase && typeof e.currentTarget.value === "string") {
-            const start = e.currentTarget.selectionStart;
-            e.currentTarget.value = toTitleCase(e.currentTarget.value);
-            if (start != null) {
-              try { e.currentTarget.setSelectionRange(start, start); } catch {}
+      <div className="relative">
+        <input
+          ref={ref}
+          type={effectiveType}
+          required={required}
+          className={cn(
+            base,
+            isPassword && "pr-11",
+            error && "border-[color:var(--danger)] ring-1 ring-[color:var(--danger)]",
+            className
+          )}
+          onChange={(e) => {
+            if (titleCase && typeof e.currentTarget.value === "string") {
+              const start = e.currentTarget.selectionStart;
+              e.currentTarget.value = toTitleCase(e.currentTarget.value);
+              if (start != null) {
+                try { e.currentTarget.setSelectionRange(start, start); } catch {}
+              }
             }
-          }
-          onChange?.(e);
-        }}
-        {...props}
-      />
+            onChange?.(e);
+          }}
+          {...props}
+        />
+        {isPassword ? (
+          <button
+            type="button"
+            onClick={() => setVisible((v) => !v)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-lg text-foreground/60 hover:text-foreground hover:bg-foreground/5"
+            aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+            tabIndex={-1}
+          >
+            {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        ) : null}
+      </div>
       {error ? (
         <span className="text-xs text-[color:var(--danger)]">{error}</span>
       ) : hint ? (
