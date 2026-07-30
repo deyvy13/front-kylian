@@ -40,6 +40,12 @@ export function formatPEN(v: number | string | null | undefined): string {
 
 export function formatDateLima(d: string | Date | null | undefined, withTime = false): string {
   if (!d) return "—";
+  // Cadena "YYYY-MM-DD" (date-only): formatear sin timezone para evitar
+  // que se corra un día al ser interpretada como UTC medianoche.
+  if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    const [y, m, dd] = d.split("-");
+    return `${dd}/${m}/${y}`;
+  }
   const date = typeof d === "string" ? new Date(d) : d;
   return new Intl.DateTimeFormat("es-PE", {
     timeZone: "America/Lima",

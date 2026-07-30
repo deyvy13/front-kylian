@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus, Eye, Pencil, Trash2, FileSpreadsheet, PackagePlus,
   Package, Layers, Coins, TrendingUp, ClipboardList, Undo2, ShoppingCart,
@@ -36,7 +37,15 @@ const TABS: ModuleTab[] = [
 ];
 
 export function ProductosPage() {
-  const [tab, setTab] = useState("productos");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") === "consumos" ? "consumos" : "productos";
+  const setTab = (v: string) => {
+    const p = new URLSearchParams(searchParams.toString());
+    if (v === "productos") p.delete("tab"); else p.set("tab", v);
+    const qs = p.toString();
+    router.replace(qs ? `/productos?${qs}` : "/productos", { scroll: false });
+  };
 
   return (
     <div className="space-y-5 pt-4">
