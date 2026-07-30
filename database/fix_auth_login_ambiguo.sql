@@ -1,7 +1,15 @@
 -- ============================================================
---  PATCH — Cambia el límite de intentos de login de 5 a 11.
---  Solo es necesario si ya corriste antes actualizacion_seguridad.sql.
---  Ejecutar UNA VEZ en el SQL Editor.
+--  FIX crítico — auth_login ambigüedad de columna "correo"
+--
+--  Bug: la cláusula RETURNS TABLE (id, nombre, correo) declara
+--  variables OUT con esos nombres. Dentro del cuerpo, escribir
+--  "WHERE correo = v_correo" hace que Postgres no sepa si
+--  "correo" es la columna o la variable OUT.
+--
+--  Fix: calificar todas las referencias con el nombre de la
+--  tabla (auth_login_intentos.correo).
+--
+--  Ejecutar UNA VEZ en el SQL Editor de Supabase.
 -- ============================================================
 SET TIME ZONE 'America/Lima';
 
@@ -15,9 +23,10 @@ DECLARE
     v_user_id   INT;
     v_nombre    VARCHAR;
     v_correo_r  VARCHAR;
-    c_max_int   INT := 11;  -- intentos permitidos antes de bloqueo
-    c_bloqueo   INT := 10;  -- minutos de bloqueo
+    c_max_int   INT := 11;
+    c_bloqueo   INT := 10;
 BEGIN
+    -- Bloqueo activo?
     SELECT * INTO v_intentos
     FROM auth_login_intentos
     WHERE auth_login_intentos.correo = v_correo;
@@ -27,7 +36,9 @@ BEGIN
             CEIL(EXTRACT(EPOCH FROM (v_intentos.bloqueado_hasta - v_ahora)) / 60)::INT;
     END IF;
 
-    SELECT u.id, u.nombre, u.correo INTO v_user_id, v_nombre, v_correo_r
+    -- Verificar credenciales
+    SELECT u.id, u.nombre, u.correo
+      INTO v_user_id, v_nombre, v_correo_r
     FROM auth_usuarios u
     WHERE u.correo = v_correo
       AND u.estado = 1
@@ -48,8 +59,12 @@ BEGIN
                     WHEN li.intentos + 1 >= c_max_int
                     THEN v_ahora + (c_bloqueo || ' minutes')::INTERVAL
                     ELSE NULL END;
+        -- Devuelve set vacío → cliente muestra "Credenciales inválidas"
     END IF;
 END; $$;
-GRANT EXECUTE ON FUNCTION auth_login(VARCHAR, TEXT) TO anon, authenticated;
 
+GRANT EXECUTE ON FUNCTION auth_login(VARCHAR, TEXT) TO anon, authenticated;
 NOTIFY pgrst, 'reload schema';
+
+-- Limpiar contador para que puedas volver a intentar sin esperar el bloqueo
+DELETE FROM auth_login_intentos;

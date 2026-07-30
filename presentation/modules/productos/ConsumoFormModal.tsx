@@ -26,12 +26,12 @@ export function ConsumoFormModal({
   const [idTrab, setIdTrab] = useState<number | "">("");
   const [idProd, setIdProd] = useState<number | "">("");
   const [cantidad, setCantidad] = useState<string>("");
-  const [metodo, setMetodo] = useState<MetodoConsumo>("efectivo");
+  const [metodo, setMetodo] = useState<MetodoConsumo | "">("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setIdTrab(""); setIdProd(""); setCantidad(""); setMetodo("efectivo");
+    setIdTrab(""); setIdProd(""); setCantidad(""); setMetodo("");
     listarTrabajadores().then(setTrabajadores).catch(() => setTrabajadores([]));
     listarProductos().then(setProductos).catch(() => setProductos([]));
   }, [open]);
@@ -43,6 +43,7 @@ export function ConsumoFormModal({
   const esCredito = metodo === "credito";
 
   async function submit() {
+    if (!metodo) return toast.push("error", "Selecciona el método de pago.");
     if (!idProd) return toast.push("error", "Selecciona el producto.");
     if (cNum <= 0) return toast.push("error", "La cantidad debe ser mayor a 0.");
     if (entera && !Number.isInteger(cNum)) {
@@ -61,7 +62,7 @@ export function ConsumoFormModal({
         id_trabajador: idTrab === "" ? null : Number(idTrab),
         id_producto:   Number(idProd),
         cantidad:      cNum,
-        metodo_pago:   metodo,
+        metodo_pago:   metodo as MetodoConsumo,
       });
       toast.push("success", esCredito ? "Consumo registrado como deuda." : "Consumo registrado.");
       onSaved(); onClose();
@@ -97,10 +98,11 @@ export function ConsumoFormModal({
           searchPlaceholder="Buscar por nombre o DNI…"
         />
         <SearchSelect
-          label="Método de pago" required clearable={false}
+          label="Método de pago" required
           value={metodo}
-          onChange={(v) => setMetodo(v as MetodoConsumo)}
+          onChange={(v) => setMetodo(v === "" ? "" : v as MetodoConsumo)}
           options={METODOS}
+          placeholder="Selecciona…"
         />
         <SearchSelect
           label="Producto" required

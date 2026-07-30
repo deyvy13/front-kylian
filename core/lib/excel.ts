@@ -12,37 +12,13 @@ const HEADER_FILL = "FF0056D6"; // azul primary
 const STRIPE_FILL = "FFEFF4FC"; // azul muy claro para zebra
 const BORDER_COLOR = "FFD9E2F3";
 
-/**
- * Genera un .xlsx con tabla nativa (cabecera azul, filtros, zebra).
- * Se descarga automáticamente en el navegador.
- */
-export async function exportExcelTable(opts: {
-  filename: string;
-  sheetName: string;
-  tableName: string;
+export type SheetDef = {
+  name: string;
   columns: ColumnDef[];
   rows: Array<Record<string, unknown>>;
-}) {
-  const { filename, sheetName, tableName, columns, rows } = opts;
+};
 
-  const wb = new ExcelJS.Workbook();
-  wb.creator = "Kylian José";
-  wb.created = new Date();
-
-  const ws = wb.addWorksheet(sheetName, {
-    views: [{ state: "frozen", ySplit: 1 }],
-  });
-
-  ws.columns = columns.map((c) => ({
-    header: c.header,
-    key: c.key,
-    width: c.width ?? 18,
-  }));
-
-  // Agrega filas
-  rows.forEach((r) => ws.addRow(r));
-
-  // Formato numérico / moneda / fecha por columna
+function applySheetStyle(ws: ExcelJS.Worksheet, columns: ColumnDef[]) {
   columns.forEach((c, idx) => {
     const col = ws.getColumn(idx + 1);
     if (c.kind === "currency") col.numFmt = '"S/" #,##0.00';
@@ -50,12 +26,10 @@ export async function exportExcelTable(opts: {
     else if (c.kind === "date") col.numFmt = "dd/mm/yyyy hh:mm";
   });
 
-  // Tabla nativa
   const lastRow = ws.rowCount;
   const lastColLetter = colLetter(columns.length);
   const ref = `A1:${lastColLetter}${Math.max(lastRow, 2)}`;
 
-  // Estilo manual — más control que el theme built-in
   const header = ws.getRow(1);
   header.height = 26;
   header.eachCell((cell) => {
@@ -70,7 +44,6 @@ export async function exportExcelTable(opts: {
     };
   });
 
-  // Filas (zebra + bordes suaves)
   for (let r = 2; r <= lastRow; r++) {
     const row = ws.getRow(r);
     const zebra = r % 2 === 0;
@@ -83,16 +56,14 @@ export async function exportExcelTable(opts: {
         left:   { style: "thin", color: { argb: BORDER_COLOR } },
         right:  { style: "thin", color: { argb: BORDER_COLOR } },
       };
-      if (zebra) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: STRIPE_FILL } };
-      }
+      if (zebra) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: STRIPE_FILL } };
     });
   }
 
-  // Filtros
   ws.autoFilter = ref;
+}
 
-  // Guardar como blob y descargar
+async function saveWorkbook(wb: ExcelJS.Workbook, filename: string) {
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -105,10 +76,51 @@ export async function exportExcelTable(opts: {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
 
-  // Silencia lint: tableName no se usa como Excel table (usamos autoFilter),
-  // pero lo mantenemos por si luego se agrega addTable.
-  void tableName;
+/**
+ * Genera un .xlsx con una sola hoja. Cabecera azul, filtros, zebra.
+ */
+export async function exportExcelTable(opts: {
+  filename: string;
+  sheetName: string;
+  tableName?: string;
+  columns: ColumnDef[];
+  rows: Array<Record<string, unknown>>;
+}) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Kylian José";
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet(opts.sheetName, {
+    views: [{ state: "frozen", ySplit: 1 }],
+  });
+  ws.columns = opts.columns.map((c) => ({
+    header: c.header, key: c.key, width: c.width ?? 18,
+  }));
+  opts.rows.forEach((r) => ws.addRow(r));
+  applySheetStyle(ws, opts.columns);
+
+  await saveWorkbook(wb, opts.filename);
+}
+
+/** Genera un .xlsx con múltiples hojas. */
+export async function exportExcelMulti(opts: {
+  filename: string;
+  sheets: SheetDef[];
+}) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Kylian José";
+  wb.created = new Date();
+
+  for (const s of opts.sheets) {
+    const ws = wb.addWorksheet(s.name, { views: [{ state: "frozen", ySplit: 1 }] });
+    ws.columns = s.columns.map((c) => ({ header: c.header, key: c.key, width: c.width ?? 18 }));
+    s.rows.forEach((r) => ws.addRow(r));
+    applySheetStyle(ws, s.columns);
+  }
+
+  await saveWorkbook(wb, opts.filename);
 }
 
 function colLetter(n: number): string {

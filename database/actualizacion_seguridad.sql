@@ -34,7 +34,10 @@ DECLARE
     c_max_int   INT := 11;  -- intentos permitidos antes de bloqueo
     c_bloqueo   INT := 10;  -- minutos de bloqueo
 BEGIN
-    SELECT * INTO v_intentos FROM auth_login_intentos WHERE correo = v_correo;
+    SELECT * INTO v_intentos
+    FROM auth_login_intentos
+    WHERE auth_login_intentos.correo = v_correo;
+
     IF v_intentos.bloqueado_hasta IS NOT NULL AND v_intentos.bloqueado_hasta > v_ahora THEN
         RAISE EXCEPTION 'Demasiados intentos. Intenta nuevamente en % minuto(s).',
             CEIL(EXTRACT(EPOCH FROM (v_intentos.bloqueado_hasta - v_ahora)) / 60)::INT;
@@ -48,19 +51,20 @@ BEGIN
       AND u.password_hash = crypt(p_password, u.password_hash);
 
     IF v_user_id IS NOT NULL THEN
-        DELETE FROM auth_login_intentos WHERE correo = v_correo;
+        DELETE FROM auth_login_intentos
+        WHERE auth_login_intentos.correo = v_correo;
         RETURN QUERY SELECT v_user_id, v_nombre, v_correo_r;
     ELSE
-        INSERT INTO auth_login_intentos (correo, intentos, ultimo_intento)
+        INSERT INTO auth_login_intentos AS li (correo, intentos, ultimo_intento)
         VALUES (v_correo, 1, v_ahora)
         ON CONFLICT (correo) DO UPDATE
-            SET intentos       = auth_login_intentos.intentos + 1,
+            SET intentos       = li.intentos + 1,
                 ultimo_intento = v_ahora,
                 bloqueado_hasta = CASE
-                    WHEN auth_login_intentos.intentos + 1 >= c_max_int
+                    WHEN li.intentos + 1 >= c_max_int
                     THEN v_ahora + (c_bloqueo || ' minutes')::INTERVAL
                     ELSE NULL END;
-        -- Devuelve set vacío → cliente muestra "credenciales inválidas"
+        -- Devuelve set vacío → cliente muestra "Credenciales inválidas"
     END IF;
 END; $$;
 GRANT EXECUTE ON FUNCTION auth_login(VARCHAR, TEXT) TO anon, authenticated;

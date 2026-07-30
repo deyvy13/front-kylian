@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Plus, Eye, Pencil, Trash2, FileSpreadsheet,
+  Plus, Eye, Pencil, Trash2, FileSpreadsheet, PackagePlus,
   Package, Layers, Coins, TrendingUp, ClipboardList, Undo2, ShoppingCart,
   Wallet, AlertCircle,
 } from "lucide-react";
@@ -28,6 +28,7 @@ import { ProductoFormModal } from "./ProductoFormModal";
 import { ProductoDetalleModal } from "./ProductoDetalleModal";
 import { ConsumoFormModal } from "./ConsumoFormModal";
 import { ConfirmarEliminarModal } from "./ConfirmarEliminarModal";
+import { IngresoStockModal } from "./IngresoStockModal";
 
 const TABS: ModuleTab[] = [
   { value: "productos", label: "Productos", icon: Package },
@@ -75,6 +76,7 @@ function TabProductos() {
   const [editando, setEditando] = useState<Producto | null>(null);
   const [detalleProd, setDetalleProd] = useState<Producto | null>(null);
   const [borrarProd, setBorrarProd] = useState<Producto | null>(null);
+  const [ingresoProd, setIngresoProd] = useState<Producto | null>(null);
 
   const refrescar = useCallback(async () => {
     setLoading(true);
@@ -105,9 +107,12 @@ function TabProductos() {
   const kpis = useMemo(() => {
     const total = filtrados.length;
     const stock = filtrados.reduce((a, p) => a + Number(p.stock_actual), 0);
-    const inventario = filtrados.reduce((a, p) => a + Number(p.stock_actual) * Number(p.precio_compra), 0);
-    const ganancia = filtrados.reduce((a, p) => a + Number(p.ganancia_unitaria), 0);
-    return { total, stock, inventario, ganancia };
+    const valorStock = filtrados.reduce((a, p) => a + Number(p.stock_actual) * Number(p.precio_compra), 0);
+    const gananciaTotal = filtrados.reduce(
+      (a, p) => a + Number(p.stock_actual) * Number(p.ganancia_unitaria),
+      0
+    );
+    return { total, stock, valorStock, gananciaTotal };
   }, [filtrados]);
 
   return (
@@ -144,8 +149,10 @@ function TabProductos() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Productos" value={kpis.total} icon={<Package className="h-4 w-4" />} accent="primary" />
         <StatCard label="Stock total" value={kpis.stock.toLocaleString("es-PE")} icon={<Layers className="h-4 w-4" />} accent="success" />
-        <StatCard label="Valor inventario" value={formatPEN(kpis.inventario)} icon={<Coins className="h-4 w-4" />} accent="warning" />
-        <StatCard label="Ganancia/unidad total" value={formatPEN(kpis.ganancia)} icon={<TrendingUp className="h-4 w-4" />} accent="success" />
+        <StatCard label="Valor de Stock" value={formatPEN(kpis.valorStock)} icon={<Coins className="h-4 w-4" />} accent="warning"
+          hint="Precio de compra × stock" />
+        <StatCard label="Ganancia total del stock" value={formatPEN(kpis.gananciaTotal)} icon={<TrendingUp className="h-4 w-4" />} accent="success"
+          hint="Ganancia unitaria × stock" />
       </div>
 
       {loading ? (
@@ -185,13 +192,16 @@ function TabProductos() {
                     <Td className="text-foreground/70">{formatDateLima(p.fecha_creacion)}</Td>
                     <Td>
                       <div className="flex justify-end gap-1.5">
-                        <Button size="sm" variant="primary" onClick={() => setDetalleProd(p)}>
+                        <Button size="sm" variant="primary" onClick={() => setDetalleProd(p)} title="Ver detalle">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="warning" onClick={() => { setEditando(p); setFormOpen(true); }}>
+                        <Button size="sm" variant="success" onClick={() => setIngresoProd(p)} title="Registrar ingreso de stock">
+                          <PackagePlus className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="warning" onClick={() => { setEditando(p); setFormOpen(true); }} title="Editar">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="danger" onClick={() => setBorrarProd(p)}>
+                        <Button size="sm" variant="danger" onClick={() => setBorrarProd(p)} title="Quitar">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -235,9 +245,12 @@ function TabProductos() {
                     <p className="font-bold text-[color:var(--success)]">{formatPEN(p.ganancia_unitaria)}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-4 gap-1.5">
                   <Button size="sm" variant="primary" onClick={() => setDetalleProd(p)}>
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="success" onClick={() => setIngresoProd(p)}>
+                    <PackagePlus className="h-4 w-4" />
                   </Button>
                   <Button size="sm" variant="warning" onClick={() => { setEditando(p); setFormOpen(true); }}>
                     <Pencil className="h-4 w-4" />
@@ -258,6 +271,10 @@ function TabProductos() {
       />
       <ProductoDetalleModal
         open={!!detalleProd} onClose={() => setDetalleProd(null)} producto={detalleProd}
+      />
+      <IngresoStockModal
+        open={!!ingresoProd} onClose={() => setIngresoProd(null)}
+        onSaved={refrescar} producto={ingresoProd}
       />
       <ConfirmarEliminarModal
         open={!!borrarProd}

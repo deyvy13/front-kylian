@@ -50,10 +50,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className={cn(
           "z-50 flex flex-col",
           "clay m-3 lg:m-4",
-          "transition-transform duration-200 ease-out",
+          "transition-[transform,width] duration-200 ease-out",
+          // Móvil: drawer fixed de 240px que entra/sale
           "fixed inset-y-0 left-0 w-[240px]",
           mobileOpen ? "translate-x-0" : "-translate-x-[110%] lg:translate-x-0",
-          "lg:static lg:h-[calc(100dvh-2rem)] lg:sticky lg:top-4",
+          // Desktop: sticky en el grid y ancho automático según collapsed
+          "lg:static lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)]",
+          "lg:inset-auto lg:w-auto",
         )}
       >
         <div className="flex items-center justify-between gap-2 px-4 pt-4">

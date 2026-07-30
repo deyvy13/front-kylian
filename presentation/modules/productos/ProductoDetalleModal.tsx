@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Modal } from "@/presentation/components/ui/Modal";
 import { Button } from "@/presentation/components/ui/Button";
+import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
 import { listarMovimientos } from "@/core/services/productos.service";
 import type { Movimiento, Producto } from "@/core/types";
 import { formatDateLima, formatPEN } from "@/core/lib/utils";
@@ -12,13 +13,21 @@ export function ProductoDetalleModal({
 }: { open: boolean; onClose: () => void; producto: Producto | null }) {
   const [movs, setMovs] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(false);
+  const [rango, setRango] = useState<DateRange>({ from: null, to: null });
 
   useEffect(() => {
     if (!open || !producto) return;
     setLoading(true);
-    listarMovimientos({ idProducto: producto.id })
+    listarMovimientos({
+      idProducto: producto.id,
+      desde: rango.from, hasta: rango.to,
+    })
       .then(setMovs).finally(() => setLoading(false));
-  }, [open, producto]);
+  }, [open, producto, rango.from, rango.to]);
+
+  useEffect(() => {
+    if (!open) setRango({ from: null, to: null });
+  }, [open]);
 
   if (!producto) return null;
 
@@ -52,18 +61,24 @@ export function ProductoDetalleModal({
       </div>
 
       <div className="mt-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-bold">Historial de movimientos</h3>
-          <span className="text-xs text-foreground/60">{movs.length} registros</span>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+          <div>
+            <h3 className="text-sm font-bold">Historial de movimientos</h3>
+            <p className="text-xs text-foreground/60">Entradas y salidas del producto.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <DateRangeFilter value={rango} onApply={setRango} align="right" />
+            <span className="text-xs text-foreground/60">{movs.length} registros</span>
+          </div>
         </div>
-        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-1 max-h-[320px] overflow-y-auto">
+        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] max-h-[320px] overflow-y-auto">
           {loading ? (
             <div className="py-8 text-center text-sm text-foreground/60">Cargando…</div>
           ) : movs.length === 0 ? (
-            <div className="py-8 text-center text-sm text-foreground/60">Sin movimientos aún.</div>
+            <div className="py-8 text-center text-sm text-foreground/60">Sin movimientos en el rango.</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="text-left text-[11px] uppercase tracking-wider text-foreground/60">
+              <thead className="text-left text-[11px] uppercase tracking-wider text-foreground/60 sticky top-0 bg-[color:var(--surface-2)]">
                 <tr>
                   <th className="px-3 py-2">Fecha</th>
                   <th className="px-3 py-2">Tipo</th>
