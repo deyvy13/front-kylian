@@ -82,6 +82,21 @@ export type Movimiento = {
   fecha_movimiento: string;
 };
 
+export type HistoricoProducto = {
+  total_ingresado: number;
+  total_vendido:   number;
+  ganancia_total:  number;
+  inversion_total: number;
+};
+
+export type IngresoStockResultado = {
+  movimiento_id: number;
+  precio_compra_prev: number;
+  precio_compra_nuevo: number;
+  precio_venta_nuevo: number;
+  cambio_precio: boolean;
+};
+
 export type DashboardResumen = {
   rango: { desde: string; hasta: string };
   kpis: {

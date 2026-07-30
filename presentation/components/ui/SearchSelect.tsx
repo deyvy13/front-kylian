@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { cn, normalizarTexto } from "@/core/lib/utils";
 
@@ -32,8 +33,14 @@ export function SearchSelect({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, openUpward: false });
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
 
   const selected = useMemo(() => options.find((o) => o.value === value) ?? null, [options, value]);
 
@@ -46,11 +53,38 @@ export function SearchSelect({
     );
   }, [options, q]);
 
+  // Posicionamiento con portal — calcula sobre el trigger real
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) return;
+    const update = () => {
+      const r = triggerRef.current!.getBoundingClientRect();
+      const dropHeight = 320;
+      const espacioAbajo = window.innerHeight - r.bottom;
+      const openUpward = espacioAbajo < dropHeight && r.top > dropHeight;
+      setPos({
+        top: openUpward ? r.top + window.scrollY - 6 : r.bottom + window.scrollY + 6,
+        left: r.left + window.scrollX,
+        width: r.width,
+        openUpward,
+      });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => inputRef.current?.focus(), 30);
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      if (dropRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDoc);
@@ -62,6 +96,66 @@ export function SearchSelect({
     };
   }, [open]);
 
+  const dropdown = open && mounted ? createPortal(
+    <div
+      ref={dropRef}
+      style={{
+        position: "absolute",
+        top: pos.top,
+        left: pos.left,
+        width: pos.width,
+        transform: pos.openUpward ? "translateY(-100%)" : undefined,
+        backgroundColor: "var(--surface)",
+        zIndex: 100,
+      }}
+      className="rounded-2xl border border-[color:var(--border)] shadow-[0_10px_30px_rgba(15,32,68,0.15)] overflow-hidden"
+    >
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-[color:var(--border)]">
+        <Search className="h-4 w-4 text-foreground/50 shrink-0" />
+        <input
+          ref={inputRef}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={searchPlaceholder}
+          className="w-full bg-transparent text-sm outline-none placeholder:text-foreground/40"
+        />
+        {q && (
+          <button onClick={() => setQ("")} className="rounded p-0.5 hover:bg-foreground/10" aria-label="Limpiar búsqueda">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      <div className="max-h-64 overflow-y-auto py-1">
+        {filtered.length === 0 ? (
+          <p className="px-3 py-4 text-center text-xs text-foreground/60">Sin coincidencias</p>
+        ) : filtered.map((o) => {
+          const active = o.value === value;
+          return (
+            <button
+              key={String(o.value)}
+              type="button"
+              onClick={() => { onChange(o.value); setOpen(false); setQ(""); }}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition",
+                active
+                  ? "bg-[color:var(--primary)]/10 text-[color:var(--primary)] font-semibold"
+                  : "hover:bg-foreground/5"
+              )}
+            >
+              <span className="flex-1 truncate">
+                {o.label}
+                {o.hint ? <span className="ml-1 text-xs text-foreground/50">· {o.hint}</span> : null}
+              </span>
+              {active ? <Check className="h-4 w-4 shrink-0" /> : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
     <div ref={ref} className={cn("relative", className)}>
       {label ? (
@@ -72,6 +166,7 @@ export function SearchSelect({
       ) : null}
 
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
@@ -103,55 +198,7 @@ export function SearchSelect({
         <ChevronDown className={cn("h-4 w-4 shrink-0 text-foreground/60 transition", open && "rotate-180")} />
       </button>
 
-      {open && (
-        <div
-          style={{ backgroundColor: "var(--surface)" }}
-          className="absolute z-[80] left-0 right-0 mt-1.5 rounded-2xl border border-[color:var(--border)] shadow-[0_10px_30px_rgba(15,32,68,0.15)] overflow-hidden"
-        >
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-[color:var(--border)]">
-            <Search className="h-4 w-4 text-foreground/50 shrink-0" />
-            <input
-              ref={inputRef}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="w-full bg-transparent text-sm outline-none placeholder:text-foreground/40"
-            />
-            {q && (
-              <button onClick={() => setQ("")} className="rounded p-0.5 hover:bg-foreground/10" aria-label="Limpiar búsqueda">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="max-h-64 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-4 text-center text-xs text-foreground/60">Sin coincidencias</p>
-            ) : filtered.map((o) => {
-              const active = o.value === value;
-              return (
-                <button
-                  key={String(o.value)}
-                  type="button"
-                  onClick={() => { onChange(o.value); setOpen(false); setQ(""); }}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition",
-                    active
-                      ? "bg-[color:var(--primary)]/10 text-[color:var(--primary)] font-semibold"
-                      : "hover:bg-foreground/5"
-                  )}
-                >
-                  <span className="flex-1 truncate">
-                    {o.label}
-                    {o.hint ? <span className="ml-1 text-xs text-foreground/50">· {o.hint}</span> : null}
-                  </span>
-                  {active ? <Check className="h-4 w-4 shrink-0" /> : null}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {dropdown}
 
       {error ? (
         <span className="mt-1 block text-xs text-[color:var(--danger)]">{error}</span>

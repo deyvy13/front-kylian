@@ -1,5 +1,5 @@
 import { supabase, getCurrentUserId } from "@/core/lib/supabase";
-import type { DashboardResumen, Movimiento, Producto } from "@/core/types";
+import type { DashboardResumen, HistoricoProducto, IngresoStockResultado, Movimiento, Producto } from "@/core/types";
 
 export type FiltrosProducto = {
   idTipo?: number | null;
@@ -99,6 +99,39 @@ export async function listarMovimientos(f: {
   });
   if (error) throw error;
   return (data ?? []) as Movimiento[];
+}
+
+export async function ingresarStock(input: {
+  id_producto: number;
+  cantidad: number;
+  precio_unitario: number;
+  motivo?: string | null;
+}): Promise<IngresoStockResultado> {
+  const { data, error } = await supabase.rpc("prd_stock_ingresar", {
+    p_id_producto:     input.id_producto,
+    p_cantidad:        input.cantidad,
+    p_precio_unitario: input.precio_unitario,
+    p_motivo:          input.motivo ?? null,
+    p_id_usuario:      getCurrentUserId(),
+  });
+  if (error) throw error;
+  return data as IngresoStockResultado;
+}
+
+export async function historicoProducto(id: number): Promise<HistoricoProducto> {
+  const { data, error } = await supabase.rpc("prd_producto_historico", { p_id: id });
+  if (error) throw error;
+  const row = (data ?? [])[0] as HistoricoProducto | undefined;
+  return row ?? { total_ingresado: 0, total_vendido: 0, ganancia_total: 0, inversion_total: 0 };
+}
+
+export async function historicoGlobal(desde: string | null, hasta: string | null): Promise<HistoricoProducto> {
+  const { data, error } = await supabase.rpc("prd_historico_global", {
+    p_fecha_desde: desde, p_fecha_hasta: hasta,
+  });
+  if (error) throw error;
+  const row = (data ?? [])[0] as HistoricoProducto | undefined;
+  return row ?? { total_ingresado: 0, total_vendido: 0, ganancia_total: 0, inversion_total: 0 };
 }
 
 export async function dashboardResumen(desde: string | null, hasta: string | null): Promise<DashboardResumen> {

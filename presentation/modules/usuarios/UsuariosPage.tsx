@@ -51,14 +51,9 @@ export function UsuariosPage() {
         </div>
         <div className="ml-auto flex items-center gap-2 shrink-0">
           <Button variant="success" onClick={() => { setEditando(null); setFormOpen(true); }}>
-            <Plus className="h-4 w-4" /> Nuevo usuario
+            <Plus className="h-4 w-4" /> <span>Nuevo</span>
           </Button>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Usuarios activos" value={usuarios.length} icon={<Users className="h-4 w-4" />} accent="primary" />
-        <StatCard label="Administrador" value="1" icon={<ShieldCheck className="h-4 w-4" />} accent="success"/>
       </div>
 
       <Card>

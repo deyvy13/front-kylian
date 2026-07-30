@@ -1,10 +1,10 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Users, IdCard } from "lucide-react";
+import { Plus, Pencil, Trash2, Users } from "lucide-react";
 import { AuroraText } from "@/presentation/components/ui/AuroraText";
 import { Button } from "@/presentation/components/ui/Button";
 import { Input } from "@/presentation/components/ui/Input";
-import { Card, StatCard } from "@/presentation/components/ui/Card";
+import { Card } from "@/presentation/components/ui/Card";
 import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/ui/Table";
 import { useToast } from "@/presentation/components/ui/Toast";
 import { eliminarTrabajador, listarTrabajadores } from "@/core/services/trabajadores.service";
@@ -51,16 +51,15 @@ export function TrabajadoresPage() {
         <div className="ml-auto flex items-center gap-2 shrink-0">
           <Button variant="success" onClick={() => { setEditando(null); setFormOpen(true); }}>
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Nuevo trabajador</span>
+            <span>Nuevo</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Trabajadores activos" value={trabajadores.length}
-          icon={<Users className="h-4 w-4" />} accent="primary" />
-        <StatCard label="Coincidencias" value={filtrados.length}
-          icon={<IdCard className="h-4 w-4" />} accent="success" />
+      {/* Chip resumen */}
+      <div className="inline-flex items-center gap-2 self-start rounded-full border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-1.5 text-xs font-semibold">
+        <Users className="h-3.5 w-3.5 text-[color:var(--primary)]" />
+        <span>Total activos: <span className="font-bold">{trabajadores.length}</span></span>
       </div>
 
       <Card>

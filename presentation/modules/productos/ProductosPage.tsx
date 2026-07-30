@@ -129,11 +129,11 @@ function TabProductos() {
       <div className="flex flex-row items-center justify-end gap-2">
         <Button variant="primary" onClick={() => exportarProductosExcel(filtrados)}>
           <FileSpreadsheet className="h-4 w-4" />
-          <span className="hidden sm:inline">Exportar Excel</span>
+          <span>Exportar</span>
         </Button>
         <Button variant="success" onClick={() => { setEditando(null); setFormOpen(true); }}>
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Nuevo producto</span>
+          <span>Nuevo</span>
         </Button>
       </div>
 
@@ -348,15 +348,15 @@ function TabConsumos() {
       <div className="flex flex-row items-center justify-end gap-2 flex-wrap">
         <Button variant="primary" onClick={() => exportarConsumosExcel(consumos)}>
           <FileSpreadsheet className="h-4 w-4" />
-          <span className="hidden sm:inline">Exportar Excel</span>
+          <span>Exportar</span>
         </Button>
         <Button variant="warning" onClick={() => setPagoOpen(true)}>
           <Wallet className="h-4 w-4" />
-          <span className="hidden sm:inline">Registrar pago</span>
+          <span>Pago</span>
         </Button>
         <Button variant="success" onClick={() => setFormOpen(true)}>
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Registrar consumo</span>
+          <span>Registrar</span>
         </Button>
       </div>
 

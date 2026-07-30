@@ -3,26 +3,27 @@ import { useEffect, useState } from "react";
 import { Modal } from "@/presentation/components/ui/Modal";
 import { Button } from "@/presentation/components/ui/Button";
 import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
-import { listarMovimientos } from "@/core/services/productos.service";
-import type { Movimiento, Producto } from "@/core/types";
+import { historicoProducto, listarMovimientos } from "@/core/services/productos.service";
+import type { HistoricoProducto, Movimiento, Producto } from "@/core/types";
 import { formatDateLima, formatPEN } from "@/core/lib/utils";
-import { ArrowDownRight, ArrowUpRight, Package, Percent, Coins, Layers } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Package, Percent, Coins, Layers, PackagePlus, ShoppingCart, TrendingUp } from "lucide-react";
 
 export function ProductoDetalleModal({
   open, onClose, producto,
 }: { open: boolean; onClose: () => void; producto: Producto | null }) {
   const [movs, setMovs] = useState<Movimiento[]>([]);
+  const [historico, setHistorico] = useState<HistoricoProducto | null>(null);
   const [loading, setLoading] = useState(false);
   const [rango, setRango] = useState<DateRange>({ from: null, to: null });
 
   useEffect(() => {
     if (!open || !producto) return;
     setLoading(true);
-    listarMovimientos({
-      idProducto: producto.id,
-      desde: rango.from, hasta: rango.to,
-    })
-      .then(setMovs).finally(() => setLoading(false));
+    Promise.all([
+      listarMovimientos({ idProducto: producto.id, desde: rango.from, hasta: rango.to }),
+      historicoProducto(producto.id),
+    ]).then(([m, h]) => { setMovs(m); setHistorico(h); })
+      .finally(() => setLoading(false));
   }, [open, producto, rango.from, rango.to]);
 
   useEffect(() => {
@@ -58,6 +59,45 @@ export function ProductoDetalleModal({
             <p className="mt-1 text-base font-bold">{k.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Histórico acumulado */}
+      <div className="mt-5">
+        <h3 className="text-sm font-bold mb-2">Histórico acumulado</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-3">
+            <div className="flex items-center gap-2 text-foreground/60 text-[11px] uppercase tracking-wider font-semibold">
+              <PackagePlus className="h-4 w-4" />Stock ingresado
+            </div>
+            <p className="mt-1 text-base font-bold">
+              {historico ? Number(historico.total_ingresado).toLocaleString("es-PE") : "…"}
+              <span className="text-xs font-normal text-foreground/60"> {producto.unidad_medida}</span>
+            </p>
+          </div>
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-3">
+            <div className="flex items-center gap-2 text-foreground/60 text-[11px] uppercase tracking-wider font-semibold">
+              <ShoppingCart className="h-4 w-4" />Stock vendido
+            </div>
+            <p className="mt-1 text-base font-bold">
+              {historico ? Number(historico.total_vendido).toLocaleString("es-PE") : "…"}
+              <span className="text-xs font-normal text-foreground/60"> {producto.unidad_medida}</span>
+            </p>
+          </div>
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-3">
+            <div className="flex items-center gap-2 text-foreground/60 text-[11px] uppercase tracking-wider font-semibold">
+              <Coins className="h-4 w-4" />Inversión total
+            </div>
+            <p className="mt-1 text-base font-bold">{historico ? formatPEN(historico.inversion_total) : "…"}</p>
+          </div>
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-3">
+            <div className="flex items-center gap-2 text-foreground/60 text-[11px] uppercase tracking-wider font-semibold">
+              <TrendingUp className="h-4 w-4" />Ganancia total
+            </div>
+            <p className="mt-1 text-base font-bold text-[color:var(--success)]">
+              {historico ? formatPEN(historico.ganancia_total) : "…"}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="mt-6">

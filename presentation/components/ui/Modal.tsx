@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/core/lib/utils";
@@ -21,13 +21,20 @@ export function Modal({
   footer?: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Enviamos el foco al contenedor del diálogo para EVITAR que el
+    // navegador (especialmente en móvil) auto-enfoque el primer input
+    // y abra el teclado sin que el usuario lo pida.
+    const t = setTimeout(() => dialogRef.current?.focus(), 0);
     return () => {
+      clearTimeout(t);
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
@@ -50,11 +57,13 @@ export function Modal({
         aria-hidden
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal
+        tabIndex={-1}
         style={{ backgroundColor: "var(--surface)" }}
         className={cn(
-          "relative w-full rounded-2xl border border-[color:var(--border)] overflow-hidden",
+          "relative w-full rounded-2xl border border-[color:var(--border)] overflow-hidden outline-none",
           "shadow-[0_10px_30px_rgba(15,32,68,0.18)] animate-[fadeIn_.18s_ease-out]",
           sz
         )}

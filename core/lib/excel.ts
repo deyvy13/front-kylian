@@ -19,14 +19,27 @@ export type SheetDef = {
 };
 
 function applySheetStyle(ws: ExcelJS.Worksheet, columns: ColumnDef[]) {
+  // Formato por columna (currency y date se pueden aplicar directo).
   columns.forEach((c, idx) => {
     const col = ws.getColumn(idx + 1);
     if (c.kind === "currency") col.numFmt = '"S/" #,##0.00';
-    else if (c.kind === "number") col.numFmt = "#,##0.##";
     else if (c.kind === "date") col.numFmt = "dd/mm/yyyy hh:mm";
   });
 
+  // Para "number" aplicamos formato por celda: enteros sin decimales
+  // (evita el "40," con separador colgante), decimales con hasta 2 dígitos.
   const lastRow = ws.rowCount;
+  columns.forEach((c, idx) => {
+    if (c.kind !== "number") return;
+    for (let r = 2; r <= lastRow; r++) {
+      const cell = ws.getRow(r).getCell(idx + 1);
+      const v = cell.value;
+      if (typeof v === "number") {
+        cell.numFmt = Number.isInteger(v) ? "#,##0" : "#,##0.##";
+      }
+    }
+  });
+
   const lastColLetter = colLetter(columns.length);
   const ref = `A1:${lastColLetter}${Math.max(lastRow, 2)}`;
 
