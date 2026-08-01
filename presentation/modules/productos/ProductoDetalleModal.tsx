@@ -7,7 +7,7 @@ import { useToast } from "@/presentation/components/ui/Toast";
 import { historicoProducto, listarMovimientos, revertirIngreso } from "@/core/services/productos.service";
 import type { HistoricoProducto, Movimiento, Producto } from "@/core/types";
 import { getErrorMessage, formatDateLima, formatPEN } from "@/core/lib/utils";
-import { ArrowDownRight, ArrowUpRight, Package, Percent, Coins, Layers, PackagePlus, ShoppingCart, TrendingUp, Undo2 } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Package, Percent, Coins, Layers, PackagePlus, ShoppingCart, TrendingUp, Undo2, AlertTriangle } from "lucide-react";
 
 export function ProductoDetalleModal({
   open, onClose, producto,
@@ -18,6 +18,8 @@ export function ProductoDetalleModal({
   const [loading, setLoading] = useState(false);
   const [rango, setRango] = useState<DateRange>({ from: null, to: null });
   const [reloadTick, setReloadTick] = useState(0);
+  const [movARevertir, setMovARevertir] = useState<Movimiento | null>(null);
+  const [reverting, setReverting] = useState(false);
 
   useEffect(() => {
     if (!open || !producto) return;
@@ -29,20 +31,22 @@ export function ProductoDetalleModal({
       .finally(() => setLoading(false));
   }, [open, producto, rango.from, rango.to, reloadTick]);
 
-  async function handleRevertirIngreso(id: number) {
-    if (!confirm("¿Anular este ingreso? El stock del producto se ajustará.")) return;
+  useEffect(() => {
+    if (!open) { setRango({ from: null, to: null }); setMovARevertir(null); }
+  }, [open]);
+
+  async function confirmarRevertir() {
+    if (!movARevertir) return;
+    setReverting(true);
     try {
-      await revertirIngreso(id);
+      await revertirIngreso(movARevertir.id);
       toast.push("success", "Ingreso anulado.");
+      setMovARevertir(null);
       setReloadTick((t) => t + 1);
     } catch (e) {
       toast.push("error", getErrorMessage(e, "Error al anular"));
-    }
+    } finally { setReverting(false); }
   }
-
-  useEffect(() => {
-    if (!open) setRango({ from: null, to: null });
-  }, [open]);
 
   if (!producto) return null;
 
@@ -75,7 +79,6 @@ export function ProductoDetalleModal({
         ))}
       </div>
 
-      {/* Histórico acumulado */}
       <div className="mt-5">
         <h3 className="text-sm font-bold mb-2">Histórico acumulado</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -162,7 +165,7 @@ export function ProductoDetalleModal({
                     <td className="px-3 py-2 text-foreground/70">{m.motivo ?? "—"}</td>
                     <td className="px-3 py-2 text-right">
                       {m.tipo_movimiento === 1 ? (
-                        <Button size="sm" variant="warning" onClick={() => handleRevertirIngreso(m.id)}
+                        <Button size="sm" variant="warning" onClick={() => setMovARevertir(m)}
                           title="Anular ingreso">
                           <Undo2 className="h-3.5 w-3.5" />
                         </Button>
@@ -175,6 +178,37 @@ export function ProductoDetalleModal({
           )}
         </div>
       </div>
+
+      {/* Confirmación de revertir ingreso — Modal propio, no confirm() nativo */}
+      <Modal
+        open={!!movARevertir}
+        onClose={() => setMovARevertir(null)}
+        title="Anular ingreso"
+        size="sm"
+        footer={
+          <>
+            <Button variant="warning" onClick={() => setMovARevertir(null)}>Cancelar</Button>
+            <Button variant="danger" loading={reverting} onClick={confirmarRevertir}>
+              Sí, anular
+            </Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-[color:var(--warning)]/15 text-[color:var(--warning)]">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div className="text-sm text-foreground/80 space-y-2">
+            <p>
+              Se eliminará el movimiento de entrada por <b>{Number(movARevertir?.cantidad ?? 0)}</b> unidad(es)
+              y el stock del producto bajará esa cantidad.
+            </p>
+            <p className="text-xs text-foreground/60">
+              Si el stock actual es menor a la cantidad a revertir, la operación no procederá.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 }

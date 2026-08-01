@@ -202,8 +202,9 @@ function DashboardProductos({ rango, onError }: { rango: DateRange; onError: (m:
 /* ---------------- Consumos ---------------- */
 function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: string) => void }) {
   const [consumos, setConsumos] = useState<Consumo[]>([]);
-  const [deudaGlobal, setDeudaGlobal] = useState<number>(0);
+  const [deudas, setDeudas] = useState<DeudaTrabajador[]>([]);
   const [loading, setLoading] = useState(true);
+  const deudaGlobal = useMemo(() => deudas.reduce((a, d) => a + Number(d.total_deuda), 0), [deudas]);
 
   useEffect(() => {
     let alive = true;
@@ -216,12 +217,12 @@ function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rango.from, rango.to]);
 
-  // Deuda pendiente GLOBAL (no depende del rango): suma todas las deudas activas
+  // Deudas GLOBALES (no dependen del rango): suma todas las deudas activas
   useEffect(() => {
     let alive = true;
     listarDeudasPorTrabajador()
-      .then((ds) => { if (alive) setDeudaGlobal(ds.reduce((a, d: DeudaTrabajador) => a + Number(d.total_deuda), 0)); })
-      .catch(() => { if (alive) setDeudaGlobal(0); });
+      .then((ds) => { if (alive) setDeudas(ds); })
+      .catch(() => { if (alive) setDeudas([]); });
     return () => { alive = false; };
   }, []);
 
@@ -256,19 +257,14 @@ function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: 
     }));
   }, [consumos]);
 
-  // Top trabajadores por deuda pendiente
-  const topDeuda = useMemo(() => {
-    const map = new Map<string, number>();
-    consumos.forEach((c) => {
-      if (c.metodo_pago !== "credito" || c.pagado === 1) return;
-      const k = c.trabajador;
-      map.set(k, (map.get(k) ?? 0) + Number(c.total));
-    });
-    return Array.from(map.entries())
-      .map(([trabajador, deuda]) => ({ trabajador, deuda }))
-      .sort((a, b) => b.deuda - a.deuda)
-      .slice(0, 6);
-  }, [consumos]);
+  // Top trabajadores por deuda pendiente — usa las deudas globales, no las del rango
+  const topDeuda = useMemo(() =>
+    deudas.slice(0, 6).map((d) => ({
+      trabajador: d.trabajador,
+      deuda: Number(d.total_deuda),
+      activo: d.activo === 1,
+    })),
+  [deudas]);
 
   return (
     <div className="space-y-5">
@@ -354,7 +350,14 @@ function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: 
             <ul className="divide-y divide-[color:var(--border)]">
               {topDeuda.map((d) => (
                 <li key={d.trabajador} className="flex items-center justify-between py-2.5">
-                  <span className="text-sm font-semibold truncate">{d.trabajador}</span>
+                  <span className="text-sm font-semibold truncate">
+                    {d.trabajador}
+                    {!d.activo && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-foreground/10 text-foreground/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                        Inactivo
+                      </span>
+                    )}
+                  </span>
                   <span className="text-sm font-bold text-[color:var(--danger)] shrink-0">
                     {formatPEN(d.deuda)}
                   </span>

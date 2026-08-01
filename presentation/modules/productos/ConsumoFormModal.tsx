@@ -41,6 +41,7 @@ export function ConsumoFormModal({
   const cNum = Number(cantidad) || 0;
   const total = productoSel ? cNum * Number(productoSel.precio_venta) : 0;
   const esCredito = metodo === "credito";
+  const stockInsuficiente = productoSel != null && cNum > Number(productoSel.stock_actual);
 
   async function submit() {
     if (!metodo) return toast.push("error", "Selecciona el método de pago.");
@@ -79,7 +80,7 @@ export function ConsumoFormModal({
       footer={
         <>
           <Button variant="danger" onClick={onClose}>Cancelar</Button>
-          <Button variant="success" loading={saving} onClick={submit}>Registrar consumo</Button>
+          <Button variant="success" loading={saving} onClick={submit} disabled={stockInsuficiente}>Registrar consumo</Button>
         </>
       }
     >
@@ -127,7 +128,10 @@ export function ConsumoFormModal({
             const v = e.target.value;
             setCantidad(entera ? v.replace(/[.,]\d*/g, "") : v);
           }}
-          hint={entera ? "Solo cantidades enteras." : undefined}
+          error={stockInsuficiente
+            ? `Excede el stock disponible (${productoSel!.stock_actual} ${productoSel!.unidad_medida}).`
+            : undefined}
+          hint={!stockInsuficiente && entera ? "Solo cantidades enteras." : undefined}
         />
         <div className="sm:col-span-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3 flex items-center justify-between gap-3">
           <div>

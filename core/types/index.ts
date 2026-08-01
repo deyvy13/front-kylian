@@ -46,6 +46,7 @@ export type DeudaTrabajador = {
   dni: string;
   registros: number;
   total_deuda: number;
+  activo: 0 | 1;
 };
 
 export type Usuario = {

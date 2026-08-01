@@ -15,7 +15,7 @@ import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/
 import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
 import { ModuleTabs, type ModuleTab } from "@/presentation/components/ui/ModuleTabs";
 import { useToast } from "@/presentation/components/ui/Toast";
-import { eliminarProducto, listarProductos } from "@/core/services/productos.service";
+import { contarDependenciasProducto, eliminarProducto, listarProductos } from "@/core/services/productos.service";
 import { listarConsumos, listarTrabajadores, revertirConsumo, revertirPago } from "@/core/services/trabajadores.service";
 import type { MetodoConsumo } from "@/core/types";
 import { LABEL_METODO, CHIP_METODO } from "./metodoUi";
@@ -85,7 +85,15 @@ function TabProductos() {
   const [editando, setEditando] = useState<Producto | null>(null);
   const [detalleProd, setDetalleProd] = useState<Producto | null>(null);
   const [borrarProd, setBorrarProd] = useState<Producto | null>(null);
+  const [depsBorrar, setDepsBorrar] = useState<{ movimientos: number; consumos: number } | null>(null);
   const [ingresoProd, setIngresoProd] = useState<Producto | null>(null);
+
+  useEffect(() => {
+    if (!borrarProd) { setDepsBorrar(null); return; }
+    contarDependenciasProducto(borrarProd.id)
+      .then(setDepsBorrar)
+      .catch(() => setDepsBorrar(null));
+  }, [borrarProd]);
 
   // El filtro de texto se aplica en cliente (ver `filtrados`) para que borrar
   // el término restaure la lista sin recargar. El backend solo filtra por
@@ -291,7 +299,13 @@ function TabProductos() {
         open={!!borrarProd}
         onClose={() => setBorrarProd(null)}
         titulo={`Quitar “${borrarProd?.nombre ?? ""}”`}
-        descripcion="El producto dejará de aparecer en el listado."
+        descripcion={
+          borrarProd && Number(borrarProd.stock_actual) > 0
+            ? `⚠️ Este producto todavía tiene ${borrarProd.stock_actual} ${borrarProd.unidad_medida} en stock (${formatPEN(Number(borrarProd.stock_actual) * Number(borrarProd.precio_compra))} valorizados). El sistema no permite quitarlo mientras tenga stock — registra las salidas primero.`
+            : depsBorrar && (depsBorrar.movimientos > 0 || depsBorrar.consumos > 0)
+              ? `⚠️ Este producto tiene ${depsBorrar.movimientos} movimiento(s) y ${depsBorrar.consumos} consumo(s) en su historial. El sistema no permite quitarlo mientras tenga esos registros — revierte primero los ingresos y consumos.`
+              : "El producto dejará de aparecer en el listado."
+        }
         onConfirm={async () => {
           if (!borrarProd) return;
           try { await eliminarProducto(borrarProd.id); toast.push("success", "Producto quitado."); refrescar(); }
@@ -338,6 +352,9 @@ function TabConsumos() {
 
   useEffect(() => { refrescar(); }, [refrescar]);
 
+  const activosSet = useMemo(() => new Set(trabajadores.map((t) => t.id)), [trabajadores]);
+  const esInactivo = (idT: number | null) => idT != null && !activosSet.has(idT);
+
   const totales = useMemo(() => {
     const cantidad = consumos.reduce((a, c) => a + Number(c.cantidad), 0);
     const valor    = consumos.reduce((a, c) => a + Number(c.total), 0);
@@ -355,11 +372,11 @@ function TabConsumos() {
         </Button>
         <Button variant="warning" onClick={() => setPagoOpen(true)}>
           <Wallet className="h-4 w-4" />
-          <span>Pago</span>
+          <span>Cobrar</span>
         </Button>
         <Button variant="success" onClick={() => setFormOpen(true)}>
           <Plus className="h-4 w-4" />
-          <span>Registrar</span>
+          <span>Consumo</span>
         </Button>
       </div>
 
@@ -436,7 +453,14 @@ function TabConsumos() {
                     <Tr key={c.id}>
                       <Td className="text-foreground/70">{formatDateLima(c.fecha_consumo, true)}</Td>
                       <Td>
-                        <div className="font-semibold">{c.trabajador}</div>
+                        <div className="font-semibold flex items-center gap-1.5">
+                          {c.trabajador}
+                          {esInactivo(c.id_trabajador) && (
+                            <span className="inline-flex items-center rounded-full bg-foreground/10 text-foreground/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                              Inactivo
+                            </span>
+                          )}
+                        </div>
                         {c.dni ? <div className="text-xs text-foreground/60">DNI {c.dni}</div> : null}
                       </Td>
                       <Td>
@@ -489,7 +513,14 @@ function TabConsumos() {
                 <Card key={c.id} className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-bold truncate">{c.trabajador}</p>
+                      <p className="font-bold truncate flex items-center gap-1.5">
+                        {c.trabajador}
+                        {esInactivo(c.id_trabajador) && (
+                          <span className="inline-flex items-center rounded-full bg-foreground/10 text-foreground/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider shrink-0">
+                            Inactivo
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-foreground/60">
                         {c.dni ? `DNI ${c.dni} · ` : ""}{formatDateLima(c.fecha_consumo, true)}
                       </p>

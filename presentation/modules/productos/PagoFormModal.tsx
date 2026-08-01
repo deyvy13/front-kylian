@@ -107,7 +107,7 @@ export function PagoFormModal({
           onChange={(v) => setIdTrab(v === "" ? "" : Number(v))}
           options={deudas.map((d) => ({
             value: d.id_trabajador,
-            label: d.trabajador,
+            label: `${d.trabajador}${d.activo === 0 ? " (inactivo)" : ""}`,
             hint: `${d.registros} deuda(s) · ${formatPEN(d.total_deuda)}`,
           }))}
           placeholder={deudas.length === 0 ? "No hay trabajadores con deuda" : "Selecciona…"}

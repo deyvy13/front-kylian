@@ -77,9 +77,13 @@ export function SearchSelect({
     };
   }, [open]);
 
+  // Focus del input de búsqueda apenas se monta el dropdown (síncrono).
+  useLayoutEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(() => inputRef.current?.focus(), 30);
     const onDoc = (e: MouseEvent) => {
       const target = e.target as Node;
       if (ref.current?.contains(target)) return;
@@ -90,7 +94,6 @@ export function SearchSelect({
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
     return () => {
-      clearTimeout(t);
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
     };

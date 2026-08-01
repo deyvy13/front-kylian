@@ -118,6 +118,16 @@ export async function ingresarStock(input: {
   return data as IngresoStockResultado;
 }
 
+export async function contarDependenciasProducto(idProducto: number): Promise<{ movimientos: number; consumos: number }> {
+  const [mov, con] = await Promise.all([
+    supabase.from("prd_movimientos").select("id", { count: "exact", head: true })
+      .eq("id_producto", idProducto).eq("estado", 1),
+    supabase.from("trb_consumos").select("id", { count: "exact", head: true })
+      .eq("id_producto", idProducto).eq("estado", 1),
+  ]);
+  return { movimientos: mov.count ?? 0, consumos: con.count ?? 0 };
+}
+
 export async function revertirIngreso(idMovimiento: number) {
   const { error } = await supabase.rpc("prd_ingreso_revertir", {
     p_id_movimiento: idMovimiento, p_id_usuario: getCurrentUserId(),
