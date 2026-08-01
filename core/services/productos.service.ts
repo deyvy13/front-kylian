@@ -118,6 +118,13 @@ export async function ingresarStock(input: {
   return data as IngresoStockResultado;
 }
 
+export async function revertirIngreso(idMovimiento: number) {
+  const { error } = await supabase.rpc("prd_ingreso_revertir", {
+    p_id_movimiento: idMovimiento, p_id_usuario: getCurrentUserId(),
+  });
+  if (error) throw error;
+}
+
 export async function historicoProducto(id: number): Promise<HistoricoProducto> {
   const { data, error } = await supabase.rpc("prd_producto_historico", { p_id: id });
   if (error) throw error;

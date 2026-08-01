@@ -3,18 +3,21 @@ import { useEffect, useState } from "react";
 import { Modal } from "@/presentation/components/ui/Modal";
 import { Button } from "@/presentation/components/ui/Button";
 import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
-import { historicoProducto, listarMovimientos } from "@/core/services/productos.service";
+import { useToast } from "@/presentation/components/ui/Toast";
+import { historicoProducto, listarMovimientos, revertirIngreso } from "@/core/services/productos.service";
 import type { HistoricoProducto, Movimiento, Producto } from "@/core/types";
 import { formatDateLima, formatPEN } from "@/core/lib/utils";
-import { ArrowDownRight, ArrowUpRight, Package, Percent, Coins, Layers, PackagePlus, ShoppingCart, TrendingUp } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Package, Percent, Coins, Layers, PackagePlus, ShoppingCart, TrendingUp, Undo2 } from "lucide-react";
 
 export function ProductoDetalleModal({
   open, onClose, producto,
 }: { open: boolean; onClose: () => void; producto: Producto | null }) {
+  const toast = useToast();
   const [movs, setMovs] = useState<Movimiento[]>([]);
   const [historico, setHistorico] = useState<HistoricoProducto | null>(null);
   const [loading, setLoading] = useState(false);
   const [rango, setRango] = useState<DateRange>({ from: null, to: null });
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     if (!open || !producto) return;
@@ -24,7 +27,18 @@ export function ProductoDetalleModal({
       historicoProducto(producto.id),
     ]).then(([m, h]) => { setMovs(m); setHistorico(h); })
       .finally(() => setLoading(false));
-  }, [open, producto, rango.from, rango.to]);
+  }, [open, producto, rango.from, rango.to, reloadTick]);
+
+  async function handleRevertirIngreso(id: number) {
+    if (!confirm("¿Anular este ingreso? El stock del producto se ajustará.")) return;
+    try {
+      await revertirIngreso(id);
+      toast.push("success", "Ingreso anulado.");
+      setReloadTick((t) => t + 1);
+    } catch (e) {
+      toast.push("error", e instanceof Error ? e.message : "Error al anular");
+    }
+  }
 
   useEffect(() => {
     if (!open) setRango({ from: null, to: null });
@@ -125,6 +139,7 @@ export function ProductoDetalleModal({
                   <th className="px-3 py-2">Cantidad</th>
                   <th className="px-3 py-2">P. Unit.</th>
                   <th className="px-3 py-2">Motivo</th>
+                  <th className="px-3 py-2 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,6 +160,14 @@ export function ProductoDetalleModal({
                     <td className="px-3 py-2 font-semibold">{Number(m.cantidad)}</td>
                     <td className="px-3 py-2">{formatPEN(m.precio_unitario)}</td>
                     <td className="px-3 py-2 text-foreground/70">{m.motivo ?? "—"}</td>
+                    <td className="px-3 py-2 text-right">
+                      {m.tipo_movimiento === 1 ? (
+                        <Button size="sm" variant="warning" onClick={() => handleRevertirIngreso(m.id)}
+                          title="Anular ingreso">
+                          <Undo2 className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : <span className="text-foreground/40 text-xs">—</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -104,6 +104,13 @@ export async function registrarPago(input: {
   return data as number;
 }
 
+export async function revertirPago(idPago: number) {
+  const { error } = await supabase.rpc("trb_pagos_revertir", {
+    p_id_pago: idPago, p_id_usuario: getCurrentUserId(),
+  });
+  if (error) throw error;
+}
+
 export async function listarPagos(f: {
   idTrabajador?: number | null;
   desde?: string | null; hasta?: string | null;

@@ -6,7 +6,7 @@ import { Input, Textarea } from "@/presentation/components/ui/Input";
 import { useToast } from "@/presentation/components/ui/Toast";
 import { ingresarStock } from "@/core/services/productos.service";
 import { esUnidadEntera, formatPEN } from "@/core/lib/utils";
-import { Info } from "lucide-react";
+import { Info, AlertTriangle } from "lucide-react";
 import type { Producto } from "@/core/types";
 
 export function IngresoStockModal({
@@ -116,6 +116,22 @@ export function IngresoStockModal({
             placeholder="Compra a proveedor, reposición…"
           />
         </div>
+
+        {producto && pNum > Number(producto.precio_venta) ? (
+          <div className="sm:col-span-2 rounded-xl border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 p-4">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 mt-0.5 text-[color:var(--danger)] shrink-0" />
+              <div className="text-xs space-y-1">
+                <p className="font-semibold text-[color:var(--danger)]">
+                  Estás pagando por unidad más que tu precio de venta ({formatPEN(producto.precio_venta)})
+                </p>
+                <p className="text-foreground/70">
+                  Verifica el precio. Si continúas, cada venta de este producto te dará pérdida hasta ajustar el precio de venta.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {preview && preview.cambia ? (
           <div className="sm:col-span-2 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 p-4">

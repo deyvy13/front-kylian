@@ -16,7 +16,7 @@ import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/Da
 import { ModuleTabs, type ModuleTab } from "@/presentation/components/ui/ModuleTabs";
 import { useToast } from "@/presentation/components/ui/Toast";
 import { eliminarProducto, listarProductos } from "@/core/services/productos.service";
-import { listarConsumos, listarTrabajadores, revertirConsumo } from "@/core/services/trabajadores.service";
+import { listarConsumos, listarTrabajadores, revertirConsumo, revertirPago } from "@/core/services/trabajadores.service";
 import type { MetodoConsumo } from "@/core/types";
 import { LABEL_METODO, CHIP_METODO } from "./metodoUi";
 import { PagoFormModal } from "./PagoFormModal";
@@ -315,6 +315,7 @@ function TabConsumos() {
   const [formOpen, setFormOpen] = useState(false);
   const [pagoOpen, setPagoOpen] = useState(false);
   const [revertir, setRevertir] = useState<Consumo | null>(null);
+  const [anularPago, setAnularPago] = useState<Consumo | null>(null);
 
   useEffect(() => {
     listarTrabajadores().then(setTrabajadores).catch(() => setTrabajadores([]));
@@ -456,12 +457,19 @@ function TabConsumos() {
                       </Td>
                       <Td>
                         <div className="flex justify-end">
-                          <Button size="sm" variant="warning"
-                            onClick={() => setRevertir(c)}
-                            disabled={c.id_pago != null}
-                            title={c.id_pago != null ? "Ya fue pagado" : "Revertir"}>
-                            <Undo2 className="h-4 w-4" /> Revertir
-                          </Button>
+                          {c.id_pago != null ? (
+                            <Button size="sm" variant="warning"
+                              onClick={() => setAnularPago(c)}
+                              title="Anular el pago que contiene este consumo">
+                              <Undo2 className="h-4 w-4" /> Anular pago
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="warning"
+                              onClick={() => setRevertir(c)}
+                              title="Revertir consumo">
+                              <Undo2 className="h-4 w-4" /> Revertir
+                            </Button>
+                          )}
                         </div>
                       </Td>
                     </Tr>
@@ -503,11 +511,15 @@ function TabConsumos() {
                         </span>
                       )}
                     </div>
-                    <Button size="sm" variant="warning"
-                      onClick={() => setRevertir(c)}
-                      disabled={c.id_pago != null}>
-                      <Undo2 className="h-4 w-4" />
-                    </Button>
+                    {c.id_pago != null ? (
+                      <Button size="sm" variant="warning" onClick={() => setAnularPago(c)}>
+                        <Undo2 className="h-4 w-4" /> Anular pago
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="warning" onClick={() => setRevertir(c)}>
+                        <Undo2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </Card>
               );
@@ -526,6 +538,17 @@ function TabConsumos() {
         onConfirm={async () => {
           if (!revertir) return;
           try { await revertirConsumo(revertir.id); toast.push("success", "Consumo revertido."); refrescar(); }
+          catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
+        }}
+      />
+      <ConfirmarEliminarModal
+        open={!!anularPago}
+        onClose={() => setAnularPago(null)}
+        titulo="Anular pago"
+        descripcion="Se eliminará el pago y todos los consumos que incluía volverán a quedar como créditos pendientes. Después podrás revertirlos si querés."
+        onConfirm={async () => {
+          if (!anularPago?.id_pago) return;
+          try { await revertirPago(anularPago.id_pago); toast.push("success", "Pago anulado."); refrescar(); }
           catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
         }}
       />
