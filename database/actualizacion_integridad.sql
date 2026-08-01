@@ -107,4 +107,25 @@ BEGIN
     DELETE FROM prd_movimientos WHERE id = p_id_movimiento;
 END; $$;
 
+-- ---- 5. trb_deudas_por_trabajador: incluir también trabajadores eliminados
+--       para poder cobrar deudas "huérfanas" si por alguna razón quedan.
+CREATE OR REPLACE FUNCTION trb_deudas_por_trabajador()
+RETURNS TABLE (
+    id_trabajador INT, trabajador TEXT, dni VARCHAR,
+    registros INT, total_deuda NUMERIC
+)
+LANGUAGE plpgsql SET timezone = 'America/Lima' AS $$
+BEGIN
+    RETURN QUERY
+    SELECT t.id, (t.nombres || ' ' || t.apellidos)::TEXT, t.dni,
+           COUNT(c.id)::INT, COALESCE(SUM(c.total), 0)
+    FROM trb_trabajadores t
+    JOIN trb_consumos c ON c.id_trabajador = t.id
+    WHERE c.estado = 1 AND c.pagado = 0 AND c.metodo_pago = 'credito'
+      -- SIN filtro por t.estado: incluye eliminados para no perder cobrabilidad
+    GROUP BY t.id, t.nombres, t.apellidos, t.dni
+    HAVING COUNT(c.id) > 0
+    ORDER BY total_deuda DESC;
+END; $$;
+
 NOTIFY pgrst, 'reload schema';

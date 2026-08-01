@@ -9,7 +9,7 @@ import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/
 import { useToast } from "@/presentation/components/ui/Toast";
 import { eliminarUsuario, listarUsuarios } from "@/core/services/usuarios.service";
 import type { Usuario } from "@/core/types";
-import { coincideBusqueda, formatDateLima } from "@/core/lib/utils";
+import { getErrorMessage, coincideBusqueda, formatDateLima } from "@/core/lib/utils";
 import { UsuarioFormModal } from "./UsuarioFormModal";
 import { UsuarioDetalleModal } from "./UsuarioDetalleModal";
 import { ConfirmarEliminarModal } from "@/presentation/modules/productos/ConfirmarEliminarModal";
@@ -28,7 +28,7 @@ export function UsuariosPage() {
   async function refrescar() {
     setLoading(true);
     try { setUsuarios(await listarUsuarios(texto || null)); }
-    catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
+    catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
     finally { setLoading(false); }
   }
   useEffect(() => { refrescar(); /* eslint-disable-next-line */ }, []);
@@ -149,7 +149,7 @@ export function UsuariosPage() {
         onConfirm={async () => {
           if (!borrar) return;
           try { await eliminarUsuario(borrar.id); toast.push("success", "Usuario quitado."); refrescar(); }
-          catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
+          catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
         }}
       />
     </div>

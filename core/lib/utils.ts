@@ -5,6 +5,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Extrae un mensaje de error legible de cualquier error, incluyendo
+ *  PostgrestError de Supabase que no es instancia de Error. */
+export function getErrorMessage(e: unknown, fallback = "Error"): string {
+  if (!e) return fallback;
+  if (typeof e === "string") return e;
+  if (typeof e === "object" && e !== null && "message" in e) {
+    const m = (e as { message?: unknown }).message;
+    if (typeof m === "string" && m.trim()) return m;
+  }
+  return fallback;
+}
+
 /** Normaliza texto para búsqueda: minúsculas, sin tildes, sin diacríticos. */
 export function normalizarTexto(s: string | null | undefined): string {
   if (!s) return "";

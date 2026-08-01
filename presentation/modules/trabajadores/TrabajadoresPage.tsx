@@ -7,9 +7,9 @@ import { Input } from "@/presentation/components/ui/Input";
 import { Card } from "@/presentation/components/ui/Card";
 import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/ui/Table";
 import { useToast } from "@/presentation/components/ui/Toast";
-import { eliminarTrabajador, listarTrabajadores } from "@/core/services/trabajadores.service";
+import { eliminarTrabajador, listarDeudasPorTrabajador, listarTrabajadores } from "@/core/services/trabajadores.service";
 import type { Trabajador } from "@/core/types";
-import { coincideBusqueda, formatDateLima } from "@/core/lib/utils";
+import { getErrorMessage, coincideBusqueda, formatDateLima, formatPEN } from "@/core/lib/utils";
 import { TrabajadorFormModal } from "./TrabajadorFormModal";
 import { ConfirmarEliminarModal } from "@/presentation/modules/productos/ConfirmarEliminarModal";
 
@@ -20,10 +20,22 @@ export function TrabajadoresPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<Trabajador | null>(null);
   const [borrar, setBorrar] = useState<Trabajador | null>(null);
+  const [deudaBorrar, setDeudaBorrar] = useState<number>(0);
+
+  // Cuando se abre el modal de borrar, consultamos si tiene deuda pendiente
+  useEffect(() => {
+    if (!borrar) { setDeudaBorrar(0); return; }
+    listarDeudasPorTrabajador()
+      .then((ds) => {
+        const d = ds.find((x) => x.id_trabajador === borrar.id);
+        setDeudaBorrar(d ? Number(d.total_deuda) : 0);
+      })
+      .catch(() => setDeudaBorrar(0));
+  }, [borrar]);
 
   const refrescar = useCallback(async () => {
     try { setTrabajadores(await listarTrabajadores()); }
-    catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
+    catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
   }, [toast]);
 
   useEffect(() => { refrescar(); }, [refrescar]);
@@ -152,11 +164,15 @@ export function TrabajadoresPage() {
         open={!!borrar}
         onClose={() => setBorrar(null)}
         titulo={`Quitar “${borrar?.apellidos ?? ""}, ${borrar?.nombres ?? ""}”`}
-        descripcion="El trabajador dejará de aparecer en el listado."
+        descripcion={
+          deudaBorrar > 0
+            ? `⚠️ Este trabajador tiene una deuda pendiente de ${formatPEN(deudaBorrar)}. Primero registra su pago o revierte esos consumos; el sistema no permite quitarlo mientras tenga deuda.`
+            : "El trabajador dejará de aparecer en el listado."
+        }
         onConfirm={async () => {
           if (!borrar) return;
           try { await eliminarTrabajador(borrar.id); toast.push("success", "Trabajador quitado."); refrescar(); }
-          catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
+          catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
         }}
       />
     </div>

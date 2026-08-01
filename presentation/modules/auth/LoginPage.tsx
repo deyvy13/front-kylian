@@ -1,4 +1,5 @@
 "use client";
+import { getErrorMessage } from "@/core/lib/utils";
 import { useState } from "react";
 import { LogIn, Store } from "lucide-react";
 import { Input } from "@/presentation/components/ui/Input";
@@ -24,7 +25,7 @@ export function LoginPage() {
       setUser(user);
       toast.push("success", `Bienvenid@, ${user.nombre.split(" ")[0]}.`);
     } catch (e) {
-      toast.push("error", e instanceof Error ? e.message : "No se pudo iniciar sesión.");
+      toast.push("error", getErrorMessage(e, "No se pudo iniciar sesión."));
     } finally { setLoading(false); }
   }
 

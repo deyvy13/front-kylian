@@ -8,7 +8,7 @@ import {
   listarConsumos, listarDeudasPorTrabajador, registrarPago,
 } from "@/core/services/trabajadores.service";
 import type { Consumo, DeudaTrabajador, MetodoPago } from "@/core/types";
-import { formatDateLima, formatPEN } from "@/core/lib/utils";
+import { getErrorMessage, formatDateLima, formatPEN } from "@/core/lib/utils";
 
 const METODOS: { value: MetodoPago; label: string }[] = [
   { value: "efectivo",          label: "Efectivo" },
@@ -77,7 +77,7 @@ export function PagoFormModal({
       toast.push("success", `Pago registrado por ${formatPEN(totalSel)}.`);
       onSaved(); onClose();
     } catch (e) {
-      toast.push("error", e instanceof Error ? e.message : "Error");
+      toast.push("error", getErrorMessage(e, "Error"));
     } finally { setSaving(false); }
   }
 

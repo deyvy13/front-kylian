@@ -7,7 +7,7 @@ import { SearchSelect } from "@/presentation/components/ui/SearchSelect";
 import { useToast } from "@/presentation/components/ui/Toast";
 import { actualizarProducto, crearProducto } from "@/core/services/productos.service";
 import type { OpcionLista, Producto } from "@/core/types";
-import { formatPEN } from "@/core/lib/utils";
+import { getErrorMessage, formatPEN } from "@/core/lib/utils";
 
 type Props = {
   open: boolean;
@@ -55,6 +55,7 @@ export function ProductoFormModal({ open, onClose, onSaved, tipos, unidades, pro
   const pcNum = Number(precioCompra) || 0;
   const gananciaUnitaria = useMemo(() => {
     const pv = Number(precioVenta) || 0;
+    if (pcNum <= 0 || pv <= 0) return 0;
     return Math.max(0, pv - pcNum);
   }, [precioVenta, pcNum]);
 
@@ -117,7 +118,7 @@ export function ProductoFormModal({ open, onClose, onSaved, tipos, unidades, pro
       }
       onSaved(); onClose();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Error al guardar";
+      const msg = getErrorMessage(e, "Error al guardar");
       toast.push("error", msg);
     } finally { setSaving(false); }
   }

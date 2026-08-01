@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
   BarChart, Bar, Legend,
@@ -9,12 +10,11 @@ import { AuroraText } from "@/presentation/components/ui/AuroraText";
 import { Card, StatCard } from "@/presentation/components/ui/Card";
 import { DateRangeFilter, rangePresets, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
 import { ModuleTabs, type ModuleTab } from "@/presentation/components/ui/ModuleTabs";
-import { cn } from "@/core/lib/utils";
-import { dashboardResumen } from "@/core/services/productos.service";
-import { listarConsumos } from "@/core/services/trabajadores.service";
-import type { Consumo, DashboardResumen, MetodoConsumo } from "@/core/types";
+import { cn, getErrorMessage, formatDateLima, formatPEN } from "@/core/lib/utils";
+import { dashboardResumen, historicoGlobal } from "@/core/services/productos.service";
+import { listarConsumos, listarDeudasPorTrabajador } from "@/core/services/trabajadores.service";
+import type { Consumo, DashboardResumen, DeudaTrabajador, MetodoConsumo } from "@/core/types";
 import { LABEL_METODO } from "@/presentation/modules/productos/metodoUi";
-import { formatDateLima, formatPEN } from "@/core/lib/utils";
 import { useToast } from "@/presentation/components/ui/Toast";
 
 type Preset = "hoy" | "7d" | "30d" | "custom";
@@ -42,7 +42,15 @@ function PresetChip({ active, onClick, children }: { active: boolean; onClick: (
 
 export function DashboardPage() {
   const toast = useToast();
-  const [tab, setTab] = useState<string>("productos");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") === "consumos" ? "consumos" : "productos";
+  const setTab = (v: string) => {
+    const p = new URLSearchParams(searchParams.toString());
+    if (v === "productos") p.delete("tab"); else p.set("tab", v);
+    const qs = p.toString();
+    router.replace(qs ? `/?${qs}` : "/", { scroll: false });
+  };
 
   const [rango, setRango] = useState<DateRange>(rangePresets.ultimos30());
   const [preset, setPreset] = useState<Preset>("30d");
@@ -99,7 +107,7 @@ function DashboardProductos({ rango, onError }: { rango: DateRange; onError: (m:
     setLoading(true);
     dashboardResumen(rango.from, rango.to)
       .then((d) => { if (alive) setData(d); })
-      .catch((e) => onError(e instanceof Error ? e.message : "Error al cargar dashboard"))
+      .catch((e) => onError(getErrorMessage(e, "Error al cargar dashboard")))
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,6 +202,7 @@ function DashboardProductos({ rango, onError }: { rango: DateRange; onError: (m:
 /* ---------------- Consumos ---------------- */
 function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: string) => void }) {
   const [consumos, setConsumos] = useState<Consumo[]>([]);
+  const [deudaGlobal, setDeudaGlobal] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -201,20 +210,26 @@ function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: 
     setLoading(true);
     listarConsumos({ desde: rango.from, hasta: rango.to })
       .then((d) => { if (alive) setConsumos(d); })
-      .catch((e) => onError(e instanceof Error ? e.message : "Error al cargar consumos"))
+      .catch((e) => onError(getErrorMessage(e, "Error al cargar consumos")))
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rango.from, rango.to]);
 
+  // Deuda pendiente GLOBAL (no depende del rango): suma todas las deudas activas
+  useEffect(() => {
+    let alive = true;
+    listarDeudasPorTrabajador()
+      .then((ds) => { if (alive) setDeudaGlobal(ds.reduce((a, d: DeudaTrabajador) => a + Number(d.total_deuda), 0)); })
+      .catch(() => { if (alive) setDeudaGlobal(0); });
+    return () => { alive = false; };
+  }, []);
+
   const kpis = useMemo(() => {
     const registros = consumos.length;
     const valor     = consumos.reduce((a, c) => a + Number(c.total), 0);
     const cantidad  = consumos.reduce((a, c) => a + Number(c.cantidad), 0);
-    const deuda     = consumos
-      .filter((c) => c.metodo_pago === "credito" && c.pagado === 0)
-      .reduce((a, c) => a + Number(c.total), 0);
-    return { registros, valor, cantidad, deuda };
+    return { registros, valor, cantidad };
   }, [consumos]);
 
   // Serie diaria: total consumido por día
@@ -264,9 +279,9 @@ function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: 
           icon={<ShoppingCart className="h-4 w-4" />} accent="warning" />
         <StatCard label="Valor consumido"  value={loading ? "…" : formatPEN(kpis.valor)}
           icon={<Coins className="h-4 w-4" />} accent="success" />
-        <StatCard label="Deuda pendiente"  value={loading ? "…" : formatPEN(kpis.deuda)}
+        <StatCard label="Deuda pendiente (total)" value={formatPEN(deudaGlobal)}
           icon={<AlertCircle className="h-4 w-4" />} accent="danger"
-          hint="Créditos sin pagar en el rango" />
+          hint="Todas las deudas activas (no depende del rango)" />
       </div>
 
       <Card>

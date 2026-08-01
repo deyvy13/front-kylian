@@ -13,6 +13,8 @@ type Props = {
   onClear?: () => void;
   className?: string;
   align?: "left" | "right";
+  /** Si true (default), no permite elegir días posteriores a hoy. */
+  disableFuture?: boolean;
 };
 
 const DIAS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
@@ -28,7 +30,12 @@ function ymd(d: Date): string {
   return `${y}-${m}-${dd}`;
 }
 
-export function DateRangeFilter({ value, onApply, onClear, className, align = "left" }: Props) {
+export function DateRangeFilter({ value, onApply, onClear, className, align = "left", disableFuture = true }: Props) {
+  const hoyISO = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  }, []);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [draft, setDraft] = useState<DateRange>(value);
@@ -103,6 +110,7 @@ export function DateRangeFilter({ value, onApply, onClear, className, align = "l
 
   function handleDayClick(d: Date) {
     const iso = ymd(d);
+    if (disableFuture && iso > hoyISO) return;
     if (!draft.from || (draft.from && draft.to)) {
       setDraft({ from: iso, to: null });
       return;
@@ -154,13 +162,16 @@ export function DateRangeFilter({ value, onApply, onClear, className, align = "l
           const isFrom = draft.from === iso;
           const isTo = draft.to === iso;
           const isIn = inRange(d);
+          const disabled = disableFuture && iso > hoyISO;
           return (
             <button
               key={i}
               onClick={() => handleDayClick(d)}
+              disabled={disabled}
               className={cn(
                 "h-8 rounded-lg text-xs font-medium transition",
-                "hover:bg-[color:var(--primary)]/15",
+                !disabled && "hover:bg-[color:var(--primary)]/15",
+                disabled && "text-foreground/25 cursor-not-allowed",
                 (isFrom || isTo) && "bg-[color:var(--primary)] text-[color:var(--primary-fg)] font-bold",
                 isIn && !isFrom && !isTo && "bg-[color:var(--primary)]/20"
               )}

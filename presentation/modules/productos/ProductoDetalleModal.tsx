@@ -6,7 +6,7 @@ import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/Da
 import { useToast } from "@/presentation/components/ui/Toast";
 import { historicoProducto, listarMovimientos, revertirIngreso } from "@/core/services/productos.service";
 import type { HistoricoProducto, Movimiento, Producto } from "@/core/types";
-import { formatDateLima, formatPEN } from "@/core/lib/utils";
+import { getErrorMessage, formatDateLima, formatPEN } from "@/core/lib/utils";
 import { ArrowDownRight, ArrowUpRight, Package, Percent, Coins, Layers, PackagePlus, ShoppingCart, TrendingUp, Undo2 } from "lucide-react";
 
 export function ProductoDetalleModal({
@@ -36,7 +36,7 @@ export function ProductoDetalleModal({
       toast.push("success", "Ingreso anulado.");
       setReloadTick((t) => t + 1);
     } catch (e) {
-      toast.push("error", e instanceof Error ? e.message : "Error al anular");
+      toast.push("error", getErrorMessage(e, "Error al anular"));
     }
   }
 

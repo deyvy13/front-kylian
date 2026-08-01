@@ -8,7 +8,7 @@ import { useToast } from "@/presentation/components/ui/Toast";
 import { listarTrabajadores, registrarConsumo } from "@/core/services/trabajadores.service";
 import { listarProductos } from "@/core/services/productos.service";
 import type { MetodoConsumo, Producto, Trabajador } from "@/core/types";
-import { esUnidadEntera, formatPEN } from "@/core/lib/utils";
+import { getErrorMessage, esUnidadEntera, formatPEN } from "@/core/lib/utils";
 
 const METODOS: { value: MetodoConsumo; label: string }[] = [
   { value: "efectivo", label: "Efectivo" },
@@ -67,7 +67,7 @@ export function ConsumoFormModal({
       toast.push("success", esCredito ? "Consumo registrado como deuda." : "Consumo registrado.");
       onSaved(); onClose();
     } catch (e) {
-      toast.push("error", e instanceof Error ? e.message : "Error");
+      toast.push("error", getErrorMessage(e, "Error"));
     } finally { setSaving(false); }
   }
 

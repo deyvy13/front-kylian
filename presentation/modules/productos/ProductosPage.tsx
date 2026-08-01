@@ -22,7 +22,7 @@ import { LABEL_METODO, CHIP_METODO } from "./metodoUi";
 import { PagoFormModal } from "./PagoFormModal";
 import { listarOpciones } from "@/core/services/listas.service";
 import type { Consumo, OpcionLista, Producto, Trabajador } from "@/core/types";
-import { coincideBusqueda, formatPEN, formatDateLima } from "@/core/lib/utils";
+import { getErrorMessage, coincideBusqueda, formatPEN, formatDateLima } from "@/core/lib/utils";
 import { exportarProductosExcel } from "./exportar";
 import { exportarConsumosExcel } from "./exportar_consumos";
 import { ProductoFormModal } from "./ProductoFormModal";
@@ -87,19 +87,21 @@ function TabProductos() {
   const [borrarProd, setBorrarProd] = useState<Producto | null>(null);
   const [ingresoProd, setIngresoProd] = useState<Producto | null>(null);
 
+  // El filtro de texto se aplica en cliente (ver `filtrados`) para que borrar
+  // el término restaure la lista sin recargar. El backend solo filtra por
+  // tipo y rango de fechas.
   const refrescar = useCallback(async () => {
     setLoading(true);
     try {
       const data = await listarProductos({
         idTipo: idTipo === "" ? null : idTipo,
         desde: rango.from, hasta: rango.to,
-        texto: texto || null,
       });
       setProductos(data);
     } catch (e) {
-      toast.push("error", e instanceof Error ? e.message : "Error al cargar productos");
+      toast.push("error", getErrorMessage(e, "Error al cargar productos"));
     } finally { setLoading(false); }
-  }, [idTipo, rango.from, rango.to, texto, toast]);
+  }, [idTipo, rango.from, rango.to, toast]);
 
   useEffect(() => {
     listarOpciones("TIPOS_PRODUCTO").then(setTipos).catch(() => {});
@@ -293,7 +295,7 @@ function TabProductos() {
         onConfirm={async () => {
           if (!borrarProd) return;
           try { await eliminarProducto(borrarProd.id); toast.push("success", "Producto quitado."); refrescar(); }
-          catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
+          catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
         }}
       />
     </div>
@@ -330,7 +332,7 @@ function TabConsumos() {
         metodoPago: metodo || null,
         soloPendientes: pendientes === "pendientes" ? 1 : pendientes === "pagados" ? 0 : null,
       }));
-    } catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
+    } catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
     finally { setLoading(false); }
   }, [idTrab, rango.from, rango.to, metodo, pendientes, toast]);
 
@@ -538,7 +540,7 @@ function TabConsumos() {
         onConfirm={async () => {
           if (!revertir) return;
           try { await revertirConsumo(revertir.id); toast.push("success", "Consumo revertido."); refrescar(); }
-          catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
+          catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
         }}
       />
       <ConfirmarEliminarModal
@@ -549,7 +551,7 @@ function TabConsumos() {
         onConfirm={async () => {
           if (!anularPago?.id_pago) return;
           try { await revertirPago(anularPago.id_pago); toast.push("success", "Pago anulado."); refrescar(); }
-          catch (e) { toast.push("error", e instanceof Error ? e.message : "Error"); }
+          catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
         }}
       />
     </div>

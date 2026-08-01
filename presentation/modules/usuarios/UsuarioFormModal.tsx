@@ -1,4 +1,5 @@
 "use client";
+import { getErrorMessage } from "@/core/lib/utils";
 import { useEffect, useState } from "react";
 import { Modal } from "@/presentation/components/ui/Modal";
 import { Button } from "@/presentation/components/ui/Button";
@@ -51,7 +52,7 @@ export function UsuarioFormModal({
       }
       onSaved(); onClose();
     } catch (e) {
-      toast.push("error", e instanceof Error ? e.message : "Error al guardar");
+      toast.push("error", getErrorMessage(e, "Error al guardar"));
     } finally { setSaving(false); }
   }
 

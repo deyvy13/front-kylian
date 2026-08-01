@@ -5,7 +5,7 @@ import { Button } from "@/presentation/components/ui/Button";
 import { Input, Textarea } from "@/presentation/components/ui/Input";
 import { useToast } from "@/presentation/components/ui/Toast";
 import { ingresarStock } from "@/core/services/productos.service";
-import { esUnidadEntera, formatPEN } from "@/core/lib/utils";
+import { getErrorMessage, esUnidadEntera, formatPEN } from "@/core/lib/utils";
 import { Info, AlertTriangle } from "lucide-react";
 import type { Producto } from "@/core/types";
 
@@ -70,7 +70,7 @@ export function IngresoStockModal({
       }
       onSaved(); onClose();
     } catch (e) {
-      toast.push("error", e instanceof Error ? e.message : "Error al registrar");
+      toast.push("error", getErrorMessage(e, "Error al registrar"));
     } finally { setSaving(false); }
   }
 
