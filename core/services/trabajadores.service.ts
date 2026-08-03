@@ -1,10 +1,26 @@
 import { supabase, getCurrentUserId } from "@/core/lib/supabase";
-import type { Consumo, DeudaTrabajador, MetodoConsumo, MetodoPago, Pago, Trabajador } from "@/core/types";
+import type { Consumo, DeudaTrabajador, MetodoConsumo, MetodoPago, Pago, Trabajador, TrabajadorResumen } from "@/core/types";
 
-export async function listarTrabajadores(texto?: string | null): Promise<Trabajador[]> {
-  const { data, error } = await supabase.rpc("trb_trabajadores_listar", { p_texto: texto ?? null });
+export async function listarTrabajadores(texto?: string | null, estado: 0 | 1 = 1): Promise<Trabajador[]> {
+  const { data, error } = await supabase.rpc("trb_trabajadores_listar", {
+    p_texto: texto ?? null, p_estado: estado,
+  });
   if (error) throw error;
   return (data ?? []) as Trabajador[];
+}
+
+export async function reactivarTrabajador(id: number) {
+  const { error } = await supabase.rpc("trb_trabajadores_reactivar", {
+    p_id: id, p_id_usuario: getCurrentUserId(),
+  });
+  if (error) throw error;
+}
+
+export async function resumenTrabajador(id: number): Promise<TrabajadorResumen> {
+  const { data, error } = await supabase.rpc("trb_trabajador_resumen", { p_id: id });
+  if (error) throw error;
+  const row = (data ?? [])[0] as TrabajadorResumen | undefined;
+  return row ?? { total_consumido: 0, total_pagado: 0, total_deuda: 0, n_consumos: 0, n_pagos: 0 };
 }
 
 export async function crearTrabajador(input: { nombres: string; apellidos: string; dni: string; labor?: string | null }) {

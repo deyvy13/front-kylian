@@ -1,28 +1,31 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Eye, RotateCcw } from "lucide-react";
 import { AuroraText } from "@/presentation/components/ui/AuroraText";
 import { Button } from "@/presentation/components/ui/Button";
 import { Input } from "@/presentation/components/ui/Input";
 import { Card } from "@/presentation/components/ui/Card";
 import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/ui/Table";
 import { useToast } from "@/presentation/components/ui/Toast";
-import { eliminarTrabajador, listarDeudasPorTrabajador, listarTrabajadores } from "@/core/services/trabajadores.service";
+import { eliminarTrabajador, listarDeudasPorTrabajador, listarTrabajadores, reactivarTrabajador } from "@/core/services/trabajadores.service";
 import type { Trabajador } from "@/core/types";
 import { getErrorMessage, coincideBusqueda, formatDateLima, formatPEN } from "@/core/lib/utils";
 import { TrabajadorFormModal } from "./TrabajadorFormModal";
+import { TrabajadorDetalleModal } from "./TrabajadorDetalleModal";
 import { ConfirmarEliminarModal } from "@/presentation/modules/productos/ConfirmarEliminarModal";
 
 export function TrabajadoresPage() {
   const toast = useToast();
   const [trabajadores, setTrabajadores] = useState<Trabajador[]>([]);
   const [texto, setTexto] = useState("");
+  const [mostrarEliminados, setMostrarEliminados] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<Trabajador | null>(null);
+  const [detalle, setDetalle] = useState<Trabajador | null>(null);
   const [borrar, setBorrar] = useState<Trabajador | null>(null);
   const [deudaBorrar, setDeudaBorrar] = useState<number>(0);
+  const [reactivarT, setReactivarT] = useState<Trabajador | null>(null);
 
-  // Cuando se abre el modal de borrar, consultamos si tiene deuda pendiente
   useEffect(() => {
     if (!borrar) { setDeudaBorrar(0); return; }
     listarDeudasPorTrabajador()
@@ -34,9 +37,9 @@ export function TrabajadoresPage() {
   }, [borrar]);
 
   const refrescar = useCallback(async () => {
-    try { setTrabajadores(await listarTrabajadores()); }
+    try { setTrabajadores(await listarTrabajadores(null, mostrarEliminados ? 0 : 1)); }
     catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
-  }, [toast]);
+  }, [mostrarEliminados, toast]);
 
   useEffect(() => { refrescar(); }, [refrescar]);
 
@@ -68,19 +71,31 @@ export function TrabajadoresPage() {
         </div>
       </div>
 
-      {/* Chip resumen */}
       <div className="inline-flex items-center gap-2 self-start rounded-full border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-1.5 text-xs font-semibold">
         <Users className="h-3.5 w-3.5 text-[color:var(--primary)]" />
-        <span>Total activos: <span className="font-bold">{trabajadores.length}</span></span>
+        <span>{mostrarEliminados ? "Eliminados" : "Total activos"}: <span className="font-bold">{trabajadores.length}</span></span>
       </div>
 
       <Card>
-        <Input label="Buscar" placeholder="Nombre, apellido, DNI o labor…"
-          value={texto} onChange={(e) => setTexto(e.target.value)} />
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+          <div className="flex-1">
+            <Input label="Buscar" placeholder="Nombre, apellido, DNI o labor…"
+              value={texto} onChange={(e) => setTexto(e.target.value)} />
+          </div>
+          <label className="flex items-center gap-2 pb-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={mostrarEliminados}
+              onChange={(e) => setMostrarEliminados(e.target.checked)}
+              className="h-4 w-4 accent-[color:var(--primary)]"
+            />
+            <span className="text-xs font-semibold">Mostrar eliminados</span>
+          </label>
+        </div>
       </Card>
 
       {filtrados.length === 0 ? (
-        <Card><EmptyState text="Aún no hay trabajadores." /></Card>
+        <Card><EmptyState text={mostrarEliminados ? "No hay trabajadores eliminados." : "Aún no hay trabajadores."} /></Card>
       ) : (
         <>
           <div className="hidden lg:block">
@@ -107,12 +122,23 @@ export function TrabajadoresPage() {
                     <Td className="text-foreground/70">{formatDateLima(t.fecha_creacion)}</Td>
                     <Td>
                       <div className="flex justify-end gap-1.5">
-                        <Button size="sm" variant="warning" onClick={() => { setEditando(t); setFormOpen(true); }}>
-                          <Pencil className="h-4 w-4" />
+                        <Button size="sm" variant="primary" onClick={() => setDetalle(t)} title="Ver detalle">
+                          <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="danger" onClick={() => setBorrar(t)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {mostrarEliminados ? (
+                          <Button size="sm" variant="success" onClick={() => setReactivarT(t)} title="Reactivar">
+                            <RotateCcw className="h-4 w-4" /> Reactivar
+                          </Button>
+                        ) : (
+                          <>
+                            <Button size="sm" variant="warning" onClick={() => { setEditando(t); setFormOpen(true); }}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="danger" onClick={() => setBorrar(t)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </Td>
                   </Tr>
@@ -141,13 +167,24 @@ export function TrabajadoresPage() {
                     </span>
                   ) : null}
                   <p className="text-[11px] text-foreground/60">Registrado: {formatDateLima(t.fecha_creacion)}</p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <Button size="sm" variant="warning" onClick={() => { setEditando(t); setFormOpen(true); }}>
-                      <Pencil className="h-4 w-4" />
+                  <div className={`grid ${mostrarEliminados ? "grid-cols-2" : "grid-cols-3"} gap-1.5`}>
+                    <Button size="sm" variant="primary" onClick={() => setDetalle(t)}>
+                      <Eye className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="danger" onClick={() => setBorrar(t)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {mostrarEliminados ? (
+                      <Button size="sm" variant="success" onClick={() => setReactivarT(t)}>
+                        <RotateCcw className="h-4 w-4" /> Reactivar
+                      </Button>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="warning" onClick={() => { setEditando(t); setFormOpen(true); }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => setBorrar(t)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </Card>
               );
@@ -159,6 +196,9 @@ export function TrabajadoresPage() {
       <TrabajadorFormModal
         open={formOpen} onClose={() => setFormOpen(false)}
         onSaved={refrescar} trabajador={editando}
+      />
+      <TrabajadorDetalleModal
+        open={!!detalle} onClose={() => setDetalle(null)} trabajador={detalle}
       />
       <ConfirmarEliminarModal
         open={!!borrar}
@@ -172,6 +212,17 @@ export function TrabajadoresPage() {
         onConfirm={async () => {
           if (!borrar) return;
           try { await eliminarTrabajador(borrar.id); toast.push("success", "Trabajador quitado."); refrescar(); }
+          catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
+        }}
+      />
+      <ConfirmarEliminarModal
+        open={!!reactivarT}
+        onClose={() => setReactivarT(null)}
+        titulo={`Reactivar “${reactivarT?.apellidos ?? ""}, ${reactivarT?.nombres ?? ""}”`}
+        descripcion="El trabajador volverá a aparecer en los listados activos."
+        onConfirm={async () => {
+          if (!reactivarT) return;
+          try { await reactivarTrabajador(reactivarT.id); toast.push("success", "Trabajador reactivado."); refrescar(); }
           catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
         }}
       />

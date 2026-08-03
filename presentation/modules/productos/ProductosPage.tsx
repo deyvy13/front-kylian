@@ -15,7 +15,7 @@ import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/
 import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
 import { ModuleTabs, type ModuleTab } from "@/presentation/components/ui/ModuleTabs";
 import { useToast } from "@/presentation/components/ui/Toast";
-import { contarDependenciasProducto, eliminarProducto, listarProductos } from "@/core/services/productos.service";
+import { eliminarProducto, listarProductos } from "@/core/services/productos.service";
 import { listarConsumos, listarTrabajadores, revertirConsumo, revertirPago } from "@/core/services/trabajadores.service";
 import type { MetodoConsumo } from "@/core/types";
 import { LABEL_METODO, CHIP_METODO } from "./metodoUi";
@@ -30,6 +30,7 @@ import { ProductoDetalleModal } from "./ProductoDetalleModal";
 import { ConsumoFormModal } from "./ConsumoFormModal";
 import { ConfirmarEliminarModal } from "./ConfirmarEliminarModal";
 import { IngresoStockModal } from "./IngresoStockModal";
+import { ExportarRangoModal } from "@/presentation/components/ui/ExportarRangoModal";
 
 const TABS: ModuleTab[] = [
   { value: "productos", label: "Productos", icon: Package },
@@ -85,15 +86,8 @@ function TabProductos() {
   const [editando, setEditando] = useState<Producto | null>(null);
   const [detalleProd, setDetalleProd] = useState<Producto | null>(null);
   const [borrarProd, setBorrarProd] = useState<Producto | null>(null);
-  const [depsBorrar, setDepsBorrar] = useState<{ movimientos: number; consumos: number } | null>(null);
   const [ingresoProd, setIngresoProd] = useState<Producto | null>(null);
-
-  useEffect(() => {
-    if (!borrarProd) { setDepsBorrar(null); return; }
-    contarDependenciasProducto(borrarProd.id)
-      .then(setDepsBorrar)
-      .catch(() => setDepsBorrar(null));
-  }, [borrarProd]);
+  const [exportOpen, setExportOpen] = useState(false);
 
   // El filtro de texto se aplica en cliente (ver `filtrados`) para que borrar
   // el término restaure la lista sin recargar. El backend solo filtra por
@@ -137,7 +131,7 @@ function TabProductos() {
   return (
     <div className="space-y-5">
       <div className="flex flex-row items-center justify-end gap-2">
-        <Button variant="primary" onClick={() => exportarProductosExcel(filtrados)}>
+        <Button variant="primary" onClick={() => setExportOpen(true)}>
           <FileSpreadsheet className="h-4 w-4" />
           <span>Exportar</span>
         </Button>
@@ -295,16 +289,21 @@ function TabProductos() {
         open={!!ingresoProd} onClose={() => setIngresoProd(null)}
         onSaved={refrescar} producto={ingresoProd}
       />
+      <ExportarRangoModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        titulo="Exportar productos"
+        descripcion="Elige el rango de fechas de registro de productos a incluir."
+        onConfirm={(r) => exportarProductosExcel(r)}
+      />
       <ConfirmarEliminarModal
         open={!!borrarProd}
         onClose={() => setBorrarProd(null)}
         titulo={`Quitar “${borrarProd?.nombre ?? ""}”`}
         descripcion={
           borrarProd && Number(borrarProd.stock_actual) > 0
-            ? `⚠️ Este producto todavía tiene ${borrarProd.stock_actual} ${borrarProd.unidad_medida} en stock (${formatPEN(Number(borrarProd.stock_actual) * Number(borrarProd.precio_compra))} valorizados). El sistema no permite quitarlo mientras tenga stock — registra las salidas primero.`
-            : depsBorrar && (depsBorrar.movimientos > 0 || depsBorrar.consumos > 0)
-              ? `⚠️ Este producto tiene ${depsBorrar.movimientos} movimiento(s) y ${depsBorrar.consumos} consumo(s) en su historial. El sistema no permite quitarlo mientras tenga esos registros — revierte primero los ingresos y consumos.`
-              : "El producto dejará de aparecer en el listado."
+            ? `⚠️ Este producto todavía tiene ${borrarProd.stock_actual} ${borrarProd.unidad_medida ?? "unidad(es)"} en stock (${formatPEN(Number(borrarProd.stock_actual) * Number(borrarProd.precio_compra))} valorizados). El sistema no permite quitarlo mientras tenga stock — registra las salidas primero.`
+            : "El producto dejará de aparecer en el listado. Los consumos y deudas históricas seguirán visibles marcados como “(eliminado)”."
         }
         onConfirm={async () => {
           if (!borrarProd) return;
@@ -332,6 +331,7 @@ function TabConsumos() {
   const [pagoOpen, setPagoOpen] = useState(false);
   const [revertir, setRevertir] = useState<Consumo | null>(null);
   const [anularPago, setAnularPago] = useState<Consumo | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
     listarTrabajadores().then(setTrabajadores).catch(() => setTrabajadores([]));
@@ -366,7 +366,7 @@ function TabConsumos() {
   return (
     <div className="space-y-5">
       <div className="flex flex-row items-center justify-end gap-2 flex-wrap">
-        <Button variant="primary" onClick={() => exportarConsumosExcel(consumos)}>
+        <Button variant="primary" onClick={() => setExportOpen(true)}>
           <FileSpreadsheet className="h-4 w-4" />
           <span>Exportar</span>
         </Button>
@@ -464,8 +464,15 @@ function TabConsumos() {
                         {c.dni ? <div className="text-xs text-foreground/60">DNI {c.dni}</div> : null}
                       </Td>
                       <Td>
-                        <div>{c.producto}</div>
-                        <div className="text-xs text-foreground/60">{c.unidad_medida}</div>
+                        <div className="flex items-center gap-1.5">
+                          {c.producto}
+                          {c.producto_activo === 0 && (
+                            <span className="inline-flex items-center rounded-full bg-foreground/10 text-foreground/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                              Eliminado
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-foreground/60">{c.unidad_medida ?? "—"}</div>
                       </Td>
                       <Td className="font-semibold">{Number(c.cantidad)}</Td>
                       <Td className="font-bold text-[color:var(--success)]">{formatPEN(c.total)}</Td>
@@ -563,6 +570,13 @@ function TabConsumos() {
 
       <ConsumoFormModal open={formOpen} onClose={() => setFormOpen(false)} onSaved={refrescar} />
       <PagoFormModal    open={pagoOpen} onClose={() => setPagoOpen(false)} onSaved={refrescar} />
+      <ExportarRangoModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        titulo="Exportar consumos"
+        descripcion="Elige el rango de fechas de consumos a incluir. Se generarán 4 hojas."
+        onConfirm={(r) => exportarConsumosExcel(r)}
+      />
       <ConfirmarEliminarModal
         open={!!revertir}
         onClose={() => setRevertir(null)}

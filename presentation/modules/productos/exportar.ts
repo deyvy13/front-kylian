@@ -1,11 +1,21 @@
-import type { Producto } from "@/core/types";
-import { exportExcelTable, stampNombreArchivo } from "@/core/lib/excel";
+import { exportExcelTable } from "@/core/lib/excel";
+import { listarProductos } from "@/core/services/productos.service";
 
-export async function exportarProductosExcel(productos: Producto[]) {
+function fmtRango(desde: string | null, hasta: string | null): string {
+  const clean = (s: string | null) => (s ?? "").replaceAll("-", "");
+  if (desde && hasta) return `${clean(desde)}_al_${clean(hasta)}`;
+  if (desde) return `desde_${clean(desde)}`;
+  return "todos";
+}
+
+export async function exportarProductosExcel(
+  rango: { from: string | null; to: string | null }
+) {
+  const productos = await listarProductos({ desde: rango.from, hasta: rango.to });
+
   await exportExcelTable({
-    filename: `productos_${stampNombreArchivo()}.xlsx`,
+    filename: `productos_${fmtRango(rango.from, rango.to)}.xlsx`,
     sheetName: "Productos",
-    tableName: "TablaProductos",
     columns: [
       { header: "Nombre",                 key: "nombre", width: 34 },
       { header: "Tipo",                   key: "tipo",   width: 22 },
@@ -19,7 +29,7 @@ export async function exportarProductosExcel(productos: Producto[]) {
     rows: productos.map((p) => ({
       nombre: p.nombre,
       tipo:   p.tipo_producto,
-      unidad: p.unidad_medida,
+      unidad: p.unidad_medida ?? "—",
       stock:  Number(p.stock_actual),
       pc:     Number(p.precio_compra),
       pv:     Number(p.precio_venta),

@@ -88,7 +88,6 @@ export function ProductoFormModal({ open, onClose, onSaved, tipos, unidades, pro
   async function submit() {
     if (!nombre.trim()) return toast.push("error", "Ingresa el nombre del producto.");
     if (!idTipo) return toast.push("error", "Selecciona el tipo de producto.");
-    if (!idUnidad) return toast.push("error", "Selecciona la unidad de medida.");
     if (pcNum <= 0) return toast.push("error", "El precio de compra debe ser mayor a 0.");
     if (Number(precioVenta) <= 0) return toast.push("error", "El precio de venta debe ser mayor a 0.");
 
@@ -98,7 +97,7 @@ export function ProductoFormModal({ open, onClose, onSaved, tipos, unidades, pro
         await actualizarProducto(producto.id, {
           nombre: nombre.trim(),
           id_tipo_producto: Number(idTipo),
-          id_unidad_medida: Number(idUnidad),
+          id_unidad_medida: idUnidad === "" ? (null as unknown as number) : Number(idUnidad),
           precio_compra: pcNum,
           precio_venta: Number(precioVenta),
           porcentaje_ganancia: Number(porcentaje) || 0,
@@ -108,7 +107,7 @@ export function ProductoFormModal({ open, onClose, onSaved, tipos, unidades, pro
         await crearProducto({
           nombre: nombre.trim(),
           id_tipo_producto: Number(idTipo),
-          id_unidad_medida: Number(idUnidad),
+          id_unidad_medida: idUnidad === "" ? (null as unknown as number) : Number(idUnidad),
           precio_compra: pcNum,
           precio_venta: Number(precioVenta),
           porcentaje_ganancia: Number(porcentaje) || 0,
@@ -156,10 +155,11 @@ export function ProductoFormModal({ open, onClose, onSaved, tipos, unidades, pro
           options={tipos.map((t) => ({ value: t.id, label: t.nombre }))}
         />
         <SearchSelect
-          label="Unidad de medida" required
+          label="Unidad de medida"
           value={idUnidad}
           onChange={(v) => setIdUnidad(v === "" ? "" : Number(v))}
           options={unidades.map((u) => ({ value: u.id, label: u.nombre }))}
+          placeholder="Selecciona (opcional)…"
         />
 
         <Input

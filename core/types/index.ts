@@ -7,6 +7,15 @@ export type Trabajador = {
   dni: string;
   labor: string | null;
   fecha_creacion: string;
+  estado?: 0 | 1;
+};
+
+export type TrabajadorResumen = {
+  total_consumido: number;
+  total_pagado: number;
+  total_deuda: number;
+  n_consumos: number;
+  n_pagos: number;
 };
 
 export type MetodoConsumo = "credito" | "efectivo" | "yape" | "deposito";
@@ -17,9 +26,11 @@ export type Consumo = {
   id_trabajador: number | null;
   trabajador: string;
   dni: string | null;
+  trabajador_activo?: 0 | 1;
   id_producto: number;
   producto: string;
-  unidad_medida: string;
+  producto_activo?: 0 | 1;
+  unidad_medida: string | null;
   cantidad: number;
   precio_unitario: number;
   total: number;
