@@ -5,15 +5,16 @@ import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
   BarChart, Bar, Legend,
 } from "recharts";
-import { Package, Layers, Coins, TrendingUp, ArrowDownRight, ArrowUpRight, ClipboardList, AlertCircle, Wallet, ShoppingCart } from "lucide-react";
+import { Package, Layers, Coins, TrendingUp, ArrowDownRight, ArrowUpRight, ClipboardList, AlertCircle, Wallet, ShoppingCart, Receipt, TrendingDown, Landmark } from "lucide-react";
 import { AuroraText } from "@/presentation/components/ui/AuroraText";
 import { Card, StatCard } from "@/presentation/components/ui/Card";
 import { DateRangeFilter, rangePresets, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
 import { ModuleTabs, type ModuleTab } from "@/presentation/components/ui/ModuleTabs";
 import { cn, getErrorMessage, formatDateLima, formatPEN } from "@/core/lib/utils";
-import { dashboardResumen, historicoGlobal } from "@/core/services/productos.service";
+import { dashboardResumen } from "@/core/services/productos.service";
 import { listarConsumos, listarDeudasPorTrabajador } from "@/core/services/trabajadores.service";
-import type { Consumo, DashboardResumen, DeudaTrabajador, MetodoConsumo } from "@/core/types";
+import { dashboardFinanzas } from "@/core/services/gastos.service";
+import type { Consumo, DashboardFinanzas, DashboardResumen, DeudaTrabajador, MetodoConsumo } from "@/core/types";
 import { LABEL_METODO } from "@/presentation/modules/productos/metodoUi";
 import { useToast } from "@/presentation/components/ui/Toast";
 
@@ -22,6 +23,7 @@ type Preset = "hoy" | "7d" | "30d" | "custom";
 const MODULOS: ModuleTab[] = [
   { value: "productos", label: "Productos", icon: Package },
   { value: "consumos",  label: "Consumos",  icon: ClipboardList },
+  { value: "finanzas",  label: "Finanzas",  icon: Landmark },
 ];
 
 function PresetChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -44,7 +46,11 @@ export function DashboardPage() {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tab = searchParams.get("tab") === "consumos" ? "consumos" : "productos";
+  const tabParam = searchParams.get("tab");
+  const tab: "productos" | "consumos" | "finanzas" =
+    tabParam === "consumos" ? "consumos"
+    : tabParam === "finanzas" ? "finanzas"
+    : "productos";
   const setTab = (v: string) => {
     const p = new URLSearchParams(searchParams.toString());
     if (v === "productos") p.delete("tab"); else p.set("tab", v);
@@ -93,6 +99,101 @@ export function DashboardPage() {
 
       {tab === "productos" && <DashboardProductos rango={rango} onError={(m) => toast.push("error", m)} />}
       {tab === "consumos"  && <DashboardConsumos  rango={rango} onError={(m) => toast.push("error", m)} />}
+      {tab === "finanzas"  && <DashboardFinanzasTab rango={rango} onError={(m) => toast.push("error", m)} />}
+    </div>
+  );
+}
+
+/* ---------------- Finanzas ---------------- */
+function DashboardFinanzasTab({ rango, onError }: { rango: DateRange; onError: (m: string) => void }) {
+  const [data, setData] = useState<DashboardFinanzas | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    dashboardFinanzas(rango.from, rango.to)
+      .then((d) => { if (alive) setData(d); })
+      .catch((e) => onError(getErrorMessage(e, "Error al cargar finanzas")))
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rango.from, rango.to]);
+
+  const serie = useMemo(() =>
+    (data?.serie ?? []).map((r) => ({ ...r, fecha: formatDateLima(r.fecha).slice(0, 5) })), [data]);
+
+  const ingresos = data?.kpis.ingresos ?? 0;
+  const egresos  = data?.kpis.egresos ?? 0;
+  const balance  = ingresos - egresos;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Ingresos" value={loading ? "…" : formatPEN(ingresos)}
+          icon={<TrendingUp className="h-4 w-4" />} accent="success"
+          hint="Contado + pagos de crédito en el rango" />
+        <StatCard label="Egresos (gastos)" value={loading ? "…" : formatPEN(egresos)}
+          icon={<Receipt className="h-4 w-4" />} accent="danger"
+          hint="Gastos registrados en el rango" />
+        <StatCard label={balance >= 0 ? "Utilidad del rango" : "Pérdida del rango"}
+          value={loading ? "…" : formatPEN(Math.abs(balance))}
+          icon={balance >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+          accent={balance >= 0 ? "success" : "danger"} />
+        <StatCard label="Deudas nuevas del rango"
+          value={loading ? "…" : formatPEN(data?.kpis.deudas_nuevas ?? 0)}
+          icon={<Wallet className="h-4 w-4" />} accent="warning"
+          hint="Consumos a crédito registrados en el rango" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        <StatCard label="Deuda activa total (no depende del rango)"
+          value={loading ? "…" : formatPEN(data?.kpis.deuda_activa_total ?? 0)}
+          icon={<AlertCircle className="h-4 w-4" />} accent="danger" />
+      </div>
+
+      <Card>
+        <div className="mb-3">
+          <h2 className="text-sm font-bold">Ingresos, egresos y deudas por día</h2>
+          <p className="text-xs text-foreground/60">
+            {data ? `${formatDateLima(data.rango.desde)} — ${formatDateLima(data.rango.hasta)}` : ""}
+          </p>
+        </div>
+        <div className="h-[320px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={serie} margin={{ top: 10, right: 12, left: -18, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gIng" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"   stopColor="var(--success)" stopOpacity={0.55} />
+                  <stop offset="100%" stopColor="var(--success)" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="gEgr" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"   stopColor="var(--danger)" stopOpacity={0.55} />
+                  <stop offset="100%" stopColor="var(--danger)" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="gDeu" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"   stopColor="var(--warning)" stopOpacity={0.55} />
+                  <stop offset="100%" stopColor="var(--warning)" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeOpacity={0.12} vertical={false} />
+              <XAxis dataKey="fecha" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={{
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: 12, fontSize: 12,
+              }} formatter={(v) => formatPEN(Number(v))} />
+              <Area type="monotone" dataKey="ingresos" name="Ingresos"
+                stroke="var(--success)" strokeWidth={2} fill="url(#gIng)" />
+              <Area type="monotone" dataKey="egresos" name="Egresos"
+                stroke="var(--danger)" strokeWidth={2} fill="url(#gEgr)" />
+              <Area type="monotone" dataKey="deudas" name="Deudas nuevas"
+                stroke="var(--warning)" strokeWidth={2} fill="url(#gDeu)" />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
     </div>
   );
 }

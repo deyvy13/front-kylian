@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Package, Users, UserSquare2, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LayoutDashboard, Package, Users, UserSquare2, Receipt, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { AuroraText } from "@/presentation/components/ui/AuroraText";
 import { ThemeToggle } from "@/presentation/components/ui/ThemeToggle";
 import { UserMenu } from "./UserMenu";
@@ -13,6 +13,7 @@ const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/productos", label: "Productos", icon: Package },
   { href: "/trabajadores", label: "Trabajadores", icon: UserSquare2 },
+  { href: "/gastos", label: "Gastos", icon: Receipt },
   { href: "/usuarios", label: "Usuarios", icon: Users },
 ];
 

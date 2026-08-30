@@ -25,10 +25,12 @@ export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   error?: string;
   /** Capitaliza automáticamente la primera letra de cada palabra */
   titleCase?: boolean;
+  /** Capitaliza solo la primera letra del texto (deja el resto libre) */
+  capitalizeFirst?: boolean;
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { className, label, hint, error, titleCase, onChange, required, type, ...props },
+  { className, label, hint, error, titleCase, capitalizeFirst, onChange, required, type, ...props },
   ref
 ) {
   const [visible, setVisible] = useState(false);
@@ -50,11 +52,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             className
           )}
           onChange={(e) => {
-            if (titleCase && typeof e.currentTarget.value === "string") {
-              const start = e.currentTarget.selectionStart;
-              e.currentTarget.value = toTitleCase(e.currentTarget.value);
-              if (start != null) {
-                try { e.currentTarget.setSelectionRange(start, start); } catch {}
+            if (typeof e.currentTarget.value === "string") {
+              if (titleCase) {
+                const start = e.currentTarget.selectionStart;
+                e.currentTarget.value = toTitleCase(e.currentTarget.value);
+                if (start != null) {
+                  try { e.currentTarget.setSelectionRange(start, start); } catch {}
+                }
+              } else if (capitalizeFirst && e.currentTarget.value.length > 0) {
+                const start = e.currentTarget.selectionStart;
+                const first = e.currentTarget.value.charAt(0).toLocaleUpperCase("es-PE");
+                if (e.currentTarget.value.charAt(0) !== first) {
+                  e.currentTarget.value = first + e.currentTarget.value.slice(1);
+                  if (start != null) {
+                    try { e.currentTarget.setSelectionRange(start, start); } catch {}
+                  }
+                }
               }
             }
             onChange?.(e);

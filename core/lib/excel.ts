@@ -4,8 +4,8 @@ export type ColumnDef = {
   header: string;
   key: string;
   width?: number;
-  /** "text" (default) | "number" | "currency" | "date" */
-  kind?: "text" | "number" | "currency" | "date";
+  /** "text" (default) | "number" | "currency" | "date" (con hora) | "date-only" */
+  kind?: "text" | "number" | "currency" | "date" | "date-only";
 };
 
 const HEADER_FILL = "FF0056D6"; // azul primary
@@ -24,6 +24,7 @@ function applySheetStyle(ws: ExcelJS.Worksheet, columns: ColumnDef[]) {
     const col = ws.getColumn(idx + 1);
     if (c.kind === "currency") col.numFmt = '"S/" #,##0.00';
     else if (c.kind === "date") col.numFmt = "dd/mm/yyyy hh:mm";
+    else if (c.kind === "date-only") col.numFmt = "dd/mm/yyyy";
   });
 
   // Para "number" aplicamos formato por celda: enteros sin decimales

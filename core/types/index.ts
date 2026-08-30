@@ -109,6 +109,25 @@ export type IngresoStockResultado = {
   cambio_precio: boolean;
 };
 
+export type Gasto = {
+  id: number;
+  monto: number;
+  concepto: string;
+  fecha_gasto: string; // YYYY-MM-DD
+  fecha_creacion: string;
+};
+
+export type DashboardFinanzas = {
+  rango: { desde: string; hasta: string };
+  kpis: {
+    ingresos: number;
+    egresos: number;
+    deudas_nuevas: number;
+    deuda_activa_total: number;
+  };
+  serie: { fecha: string; ingresos: number; egresos: number; deudas: number }[];
+};
+
 export type DashboardResumen = {
   rango: { desde: string; hasta: string };
   kpis: {
