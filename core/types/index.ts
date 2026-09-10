@@ -79,6 +79,8 @@ export type Producto = {
   porcentaje_ganancia: number;
   ganancia_unitaria: number;
   stock_actual: number;
+  /** Total histórico ingresado (suma de todas las entradas de siempre). */
+  stock_total_historico?: number;
   fecha_creacion: string;
 };
 

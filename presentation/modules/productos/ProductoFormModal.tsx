@@ -142,7 +142,7 @@ export function ProductoFormModal({ open, onClose, onSaved, tipos, unidades, pro
         <div className="sm:col-span-2">
           <Input
             label="Nombre del producto"
-            required titleCase
+            required capitalizeFirst
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             placeholder="Ej. Arroz Costeño 5kg"
