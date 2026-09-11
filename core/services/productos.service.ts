@@ -19,6 +19,22 @@ export async function listarProductos(f: FiltrosProducto = {}): Promise<Producto
   return (data ?? []) as Producto[];
 }
 
+export async function listarProductosPaginado(
+  f: FiltrosProducto & { limit: number; offset: number }
+): Promise<{ rows: Producto[]; total: number }> {
+  const { data, error } = await supabase.rpc("prd_productos_listar", {
+    p_id_tipo_producto: f.idTipo ?? null,
+    p_fecha_desde: f.desde ?? null,
+    p_fecha_hasta: f.hasta ?? null,
+    p_texto: f.texto ?? null,
+    p_limit: f.limit,
+    p_offset: f.offset,
+  });
+  if (error) throw error;
+  const rows = (data ?? []) as (Producto & { total_count?: number })[];
+  return { rows, total: Number(rows[0]?.total_count ?? 0) };
+}
+
 export type NuevoProducto = {
   nombre: string;
   id_tipo_producto: number;

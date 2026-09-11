@@ -9,6 +9,20 @@ export async function listarTrabajadores(texto?: string | null, estado: 0 | 1 = 
   return (data ?? []) as Trabajador[];
 }
 
+export async function listarTrabajadoresPaginado(
+  f: { texto?: string | null; estado?: 0 | 1; limit: number; offset: number }
+): Promise<{ rows: Trabajador[]; total: number }> {
+  const { data, error } = await supabase.rpc("trb_trabajadores_listar", {
+    p_texto:  f.texto ?? null,
+    p_estado: f.estado ?? 1,
+    p_limit:  f.limit,
+    p_offset: f.offset,
+  });
+  if (error) throw error;
+  const rows = (data ?? []) as (Trabajador & { total_count?: number })[];
+  return { rows, total: Number(rows[0]?.total_count ?? 0) };
+}
+
 export async function reactivarTrabajador(id: number) {
   const { error } = await supabase.rpc("trb_trabajadores_reactivar", {
     p_id: id, p_id_usuario: getCurrentUserId(),
@@ -88,6 +102,30 @@ export async function listarConsumos(f: {
   });
   if (error) throw error;
   return (data ?? []) as Consumo[];
+}
+
+export async function listarConsumosPaginado(
+  f: {
+    idTrabajador?:   number | null;
+    desde?:          string | null;
+    hasta?:          string | null;
+    metodoPago?:     MetodoConsumo | null;
+    soloPendientes?: 0 | 1 | null;
+    limit: number; offset: number;
+  }
+): Promise<{ rows: Consumo[]; total: number }> {
+  const { data, error } = await supabase.rpc("trb_consumos_listar", {
+    p_id_trabajador:   f.idTrabajador ?? null,
+    p_fecha_desde:     f.desde ?? null,
+    p_fecha_hasta:     f.hasta ?? null,
+    p_metodo_pago:     f.metodoPago ?? null,
+    p_solo_pendientes: f.soloPendientes ?? null,
+    p_limit:  f.limit,
+    p_offset: f.offset,
+  });
+  if (error) throw error;
+  const rows = (data ?? []) as (Consumo & { total_count?: number })[];
+  return { rows, total: Number(rows[0]?.total_count ?? 0) };
 }
 
 /** Revierte el consumo: borra el registro y devuelve la cantidad al stock. */

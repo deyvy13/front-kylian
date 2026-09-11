@@ -9,7 +9,8 @@ import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/
 import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
 import { ExportarRangoModal } from "@/presentation/components/ui/ExportarRangoModal";
 import { useToast } from "@/presentation/components/ui/Toast";
-import { eliminarGasto, listarGastos } from "@/core/services/gastos.service";
+import { eliminarGasto, listarGastosPaginado } from "@/core/services/gastos.service";
+import { Pagination } from "@/presentation/components/ui/Pagination";
 import type { Gasto } from "@/core/types";
 import { getErrorMessage, coincideBusqueda, formatDateLima, formatPEN } from "@/core/lib/utils";
 import { GastoFormModal } from "./GastoFormModal";
@@ -22,6 +23,9 @@ export function GastosPage() {
   const [loading, setLoading] = useState(true);
   const [texto, setTexto] = useState("");
   const [rango, setRango] = useState<DateRange>({ from: null, to: null });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<Gasto | null>(null);
@@ -30,19 +34,25 @@ export function GastosPage() {
 
   const refrescar = useCallback(async () => {
     setLoading(true);
-    try { setGastos(await listarGastos({ desde: rango.from, hasta: rango.to })); }
+    try {
+      const { rows, total: t } = await listarGastosPaginado({
+        desde: rango.from, hasta: rango.to,
+        texto: texto || null,
+        limit: pageSize, offset: (page - 1) * pageSize,
+      });
+      setGastos(rows);
+      setTotal(t);
+    }
     catch (e) { toast.push("error", getErrorMessage(e, "Error al cargar gastos")); }
     finally { setLoading(false); }
-  }, [rango.from, rango.to, toast]);
+  }, [rango.from, rango.to, texto, page, pageSize, toast]);
 
+  useEffect(() => { setPage(1); }, [rango.from, rango.to, texto, pageSize]);
   useEffect(() => { refrescar(); }, [refrescar]);
 
-  const filtrados = useMemo(() => {
-    if (!texto) return gastos;
-    return gastos.filter((g) => coincideBusqueda(g.concepto, texto));
-  }, [gastos, texto]);
-
-  const total = useMemo(() => filtrados.reduce((a, g) => a + Number(g.monto), 0), [filtrados]);
+  const filtrados = gastos;
+  // Suma solo de la página cargada. Para el total en soles global usar tarjeta aparte.
+  const totalMontoPagina = useMemo(() => filtrados.reduce((a, g) => a + Number(g.monto), 0), [filtrados]);
 
   return (
     <div className="space-y-5 pt-4">
@@ -79,16 +89,22 @@ export function GastosPage() {
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Gastos registrados" value={filtrados.length}
-          icon={<Receipt className="h-4 w-4" />} accent="primary" />
-        <StatCard label="Total del rango" value={formatPEN(total)}
-          icon={<Coins className="h-4 w-4" />} accent="danger" />
+        <StatCard label="Gastos registrados" value={total}
+          icon={<Receipt className="h-4 w-4" />} accent="primary"
+          hint="Total del filtro (todas las páginas)" />
+        <StatCard label="Total en esta página" value={formatPEN(totalMontoPagina)}
+          icon={<Coins className="h-4 w-4" />} accent="danger"
+          hint={`${filtrados.length} de ${total} registro(s)`} />
       </div>
 
       {loading ? (
         <Card><p className="py-8 text-center text-foreground/60">Cargando…</p></Card>
       ) : filtrados.length === 0 ? (
-        <Card><EmptyState text="Sin gastos en este filtro." /></Card>
+        <>
+          <Card><EmptyState text="Sin gastos en este filtro." /></Card>
+          <Pagination page={page} pageSize={pageSize} total={total}
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       ) : (
         <>
           {/* Desktop */}
@@ -148,6 +164,8 @@ export function GastosPage() {
               </Card>
             ))}
           </div>
+          <Pagination page={page} pageSize={pageSize} total={total}
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>
       )}
 

@@ -7,7 +7,8 @@ import { Input } from "@/presentation/components/ui/Input";
 import { Card } from "@/presentation/components/ui/Card";
 import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/ui/Table";
 import { useToast } from "@/presentation/components/ui/Toast";
-import { eliminarTrabajador, listarDeudasPorTrabajador, listarTrabajadores, reactivarTrabajador } from "@/core/services/trabajadores.service";
+import { eliminarTrabajador, listarDeudasPorTrabajador, listarTrabajadoresPaginado, reactivarTrabajador } from "@/core/services/trabajadores.service";
+import { Pagination } from "@/presentation/components/ui/Pagination";
 import type { Trabajador } from "@/core/types";
 import { getErrorMessage, coincideBusqueda, formatDateLima, formatPEN } from "@/core/lib/utils";
 import { TrabajadorFormModal } from "./TrabajadorFormModal";
@@ -19,6 +20,9 @@ export function TrabajadoresPage() {
   const [trabajadores, setTrabajadores] = useState<Trabajador[]>([]);
   const [texto, setTexto] = useState("");
   const [mostrarEliminados, setMostrarEliminados] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<Trabajador | null>(null);
   const [detalle, setDetalle] = useState<Trabajador | null>(null);
@@ -37,20 +41,22 @@ export function TrabajadoresPage() {
   }, [borrar]);
 
   const refrescar = useCallback(async () => {
-    try { setTrabajadores(await listarTrabajadores(null, mostrarEliminados ? 0 : 1)); }
+    try {
+      const { rows, total: t } = await listarTrabajadoresPaginado({
+        texto: texto || null,
+        estado: mostrarEliminados ? 0 : 1,
+        limit: pageSize, offset: (page - 1) * pageSize,
+      });
+      setTrabajadores(rows);
+      setTotal(t);
+    }
     catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
-  }, [mostrarEliminados, toast]);
+  }, [mostrarEliminados, texto, page, pageSize, toast]);
 
+  useEffect(() => { setPage(1); }, [mostrarEliminados, texto, pageSize]);
   useEffect(() => { refrescar(); }, [refrescar]);
 
-  const filtrados = useMemo(() => {
-    if (!texto) return trabajadores;
-    return trabajadores.filter((t) =>
-      coincideBusqueda(t.nombres, texto) ||
-      coincideBusqueda(t.apellidos, texto) ||
-      coincideBusqueda(t.dni, texto) ||
-      coincideBusqueda(t.labor, texto));
-  }, [trabajadores, texto]);
+  const filtrados = trabajadores;
 
   return (
     <div className="space-y-5 pt-4">
@@ -73,7 +79,7 @@ export function TrabajadoresPage() {
 
       <div className="inline-flex items-center gap-2 self-start rounded-full border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-1.5 text-xs font-semibold">
         <Users className="h-3.5 w-3.5 text-[color:var(--primary)]" />
-        <span>{mostrarEliminados ? "Eliminados" : "Total activos"}: <span className="font-bold">{trabajadores.length}</span></span>
+        <span>{mostrarEliminados ? "Eliminados" : "Total activos"}: <span className="font-bold">{total}</span></span>
       </div>
 
       <Card>
@@ -95,7 +101,11 @@ export function TrabajadoresPage() {
       </Card>
 
       {filtrados.length === 0 ? (
-        <Card><EmptyState text={mostrarEliminados ? "No hay trabajadores eliminados." : "Aún no hay trabajadores."} /></Card>
+        <>
+          <Card><EmptyState text={mostrarEliminados ? "No hay trabajadores eliminados." : "Aún no hay trabajadores."} /></Card>
+          <Pagination page={page} pageSize={pageSize} total={total}
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       ) : (
         <>
           <div className="hidden lg:block">
@@ -190,6 +200,8 @@ export function TrabajadoresPage() {
               );
             })}
           </div>
+          <Pagination page={page} pageSize={pageSize} total={total}
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>
       )}
 

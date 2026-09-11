@@ -15,8 +15,9 @@ import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/
 import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
 import { ModuleTabs, type ModuleTab } from "@/presentation/components/ui/ModuleTabs";
 import { useToast } from "@/presentation/components/ui/Toast";
-import { eliminarProducto, listarProductos } from "@/core/services/productos.service";
-import { listarConsumos, listarTrabajadores, revertirConsumo, revertirPago } from "@/core/services/trabajadores.service";
+import { eliminarProducto, listarProductosPaginado } from "@/core/services/productos.service";
+import { Pagination } from "@/presentation/components/ui/Pagination";
+import { listarConsumosPaginado, listarTrabajadores, revertirConsumo, revertirPago } from "@/core/services/trabajadores.service";
 import type { MetodoConsumo } from "@/core/types";
 import { LABEL_METODO, CHIP_METODO } from "./metodoUi";
 import { PagoFormModal } from "./PagoFormModal";
@@ -81,6 +82,9 @@ function TabProductos() {
   const [idTipo, setIdTipo] = useState<number | "">("");
   const [texto, setTexto] = useState("");
   const [rango, setRango] = useState<DateRange>({ from: null, to: null });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<Producto | null>(null);
@@ -89,33 +93,35 @@ function TabProductos() {
   const [ingresoProd, setIngresoProd] = useState<Producto | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
 
-  // El filtro de texto se aplica en cliente (ver `filtrados`) para que borrar
-  // el término restaure la lista sin recargar. El backend solo filtra por
-  // tipo y rango de fechas.
+  // Paginación server-side. El texto de búsqueda se envía al backend para
+  // que el total sea correcto y no se pagine solo una parte cargada.
   const refrescar = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await listarProductos({
+      const { rows, total } = await listarProductosPaginado({
         idTipo: idTipo === "" ? null : idTipo,
         desde: rango.from, hasta: rango.to,
+        texto: texto || null,
+        limit: pageSize, offset: (page - 1) * pageSize,
       });
-      setProductos(data);
+      setProductos(rows);
+      setTotal(total);
     } catch (e) {
       toast.push("error", getErrorMessage(e, "Error al cargar productos"));
     } finally { setLoading(false); }
-  }, [idTipo, rango.from, rango.to, toast]);
+  }, [idTipo, rango.from, rango.to, texto, page, pageSize, toast]);
 
   useEffect(() => {
     listarOpciones("TIPOS_PRODUCTO").then(setTipos).catch(() => {});
     listarOpciones("UNIDADES_MEDIDA").then(setUnidades).catch(() => {});
   }, []);
 
-  useEffect(() => { refrescar(); /* eslint-disable-next-line */ }, [idTipo, rango.from, rango.to]);
+  // Al cambiar filtros, volver a página 1
+  useEffect(() => { setPage(1); }, [idTipo, rango.from, rango.to, texto, pageSize]);
+  useEffect(() => { refrescar(); /* eslint-disable-next-line */ }, [idTipo, rango.from, rango.to, texto, page, pageSize]);
 
-  const filtrados = useMemo(() => {
-    if (!texto) return productos;
-    return productos.filter((p) => coincideBusqueda(p.nombre, texto));
-  }, [productos, texto]);
+  // Ya no hay filtro cliente sobre `texto`: la búsqueda va al backend.
+  const filtrados = productos;
 
   const kpis = useMemo(() => {
     const total = filtrados.length;
@@ -171,7 +177,11 @@ function TabProductos() {
       {loading ? (
         <Card><p className="py-8 text-center text-foreground/60">Cargando…</p></Card>
       ) : filtrados.length === 0 ? (
-        <Card><EmptyState text="No hay productos con esos filtros." /></Card>
+        <>
+          <Card><EmptyState text="No hay productos con esos filtros." /></Card>
+          <Pagination page={page} pageSize={pageSize} total={total}
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       ) : (
         <>
           <div className="hidden lg:block">
@@ -275,6 +285,8 @@ function TabProductos() {
               </Card>
             ))}
           </div>
+          <Pagination page={page} pageSize={pageSize} total={total}
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>
       )}
 
@@ -326,6 +338,9 @@ function TabConsumos() {
   const [rango, setRango] = useState<DateRange>({ from: null, to: null });
   const [metodo, setMetodo] = useState<MetodoConsumo | "">("");
   const [pendientes, setPendientes] = useState<"todos" | "pagados" | "pendientes">("todos");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
   const [formOpen, setFormOpen] = useState(false);
   const [pagoOpen, setPagoOpen] = useState(false);
@@ -340,16 +355,20 @@ function TabConsumos() {
   const refrescar = useCallback(async () => {
     setLoading(true);
     try {
-      setConsumos(await listarConsumos({
+      const { rows, total: t } = await listarConsumosPaginado({
         idTrabajador: idTrab === "" ? null : idTrab,
         desde: rango.from, hasta: rango.to,
         metodoPago: metodo || null,
         soloPendientes: pendientes === "pendientes" ? 1 : pendientes === "pagados" ? 0 : null,
-      }));
+        limit: pageSize, offset: (page - 1) * pageSize,
+      });
+      setConsumos(rows);
+      setTotal(t);
     } catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
     finally { setLoading(false); }
-  }, [idTrab, rango.from, rango.to, metodo, pendientes, toast]);
+  }, [idTrab, rango.from, rango.to, metodo, pendientes, page, pageSize, toast]);
 
+  useEffect(() => { setPage(1); }, [idTrab, rango.from, rango.to, metodo, pendientes, pageSize]);
   useEffect(() => { refrescar(); }, [refrescar]);
 
   const activosSet = useMemo(() => new Set(trabajadores.map((t) => t.id)), [trabajadores]);
@@ -432,7 +451,11 @@ function TabConsumos() {
       {loading ? (
         <Card><p className="py-8 text-center text-foreground/60">Cargando…</p></Card>
       ) : consumos.length === 0 ? (
-        <Card><EmptyState text="Sin consumos en este filtro." /></Card>
+        <>
+          <Card><EmptyState text="Sin consumos en este filtro." /></Card>
+          <Pagination page={page} pageSize={pageSize} total={total}
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       ) : (
         <>
           <div className="hidden lg:block">
@@ -565,6 +588,8 @@ function TabConsumos() {
               );
             })}
           </div>
+          <Pagination page={page} pageSize={pageSize} total={total}
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>
       )}
 
