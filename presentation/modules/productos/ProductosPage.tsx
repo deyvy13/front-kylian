@@ -338,6 +338,7 @@ function TabConsumos() {
   const [rango, setRango] = useState<DateRange>({ from: null, to: null });
   const [metodo, setMetodo] = useState<MetodoConsumo | "">("");
   const [pendientes, setPendientes] = useState<"todos" | "pagados" | "pendientes">("todos");
+  const [textoConsumos, setTextoConsumos] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
@@ -360,15 +361,16 @@ function TabConsumos() {
         desde: rango.from, hasta: rango.to,
         metodoPago: metodo || null,
         soloPendientes: pendientes === "pendientes" ? 1 : pendientes === "pagados" ? 0 : null,
+        texto: textoConsumos || null,
         limit: pageSize, offset: (page - 1) * pageSize,
       });
       setConsumos(rows);
       setTotal(t);
     } catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
     finally { setLoading(false); }
-  }, [idTrab, rango.from, rango.to, metodo, pendientes, page, pageSize, toast]);
+  }, [idTrab, rango.from, rango.to, metodo, pendientes, textoConsumos, page, pageSize, toast]);
 
-  useEffect(() => { setPage(1); }, [idTrab, rango.from, rango.to, metodo, pendientes, pageSize]);
+  useEffect(() => { setPage(1); }, [idTrab, rango.from, rango.to, metodo, pendientes, textoConsumos, pageSize]);
   useEffect(() => { refrescar(); }, [refrescar]);
 
   const activosSet = useMemo(() => new Set(trabajadores.map((t) => t.id)), [trabajadores]);
@@ -400,7 +402,13 @@ function TabConsumos() {
       </div>
 
       <Card>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <Input
+            label="Buscar"
+            placeholder="Producto, trabajador o DNI…"
+            value={textoConsumos}
+            onChange={(e) => setTextoConsumos(e.target.value)}
+          />
           <SearchSelect
             label="Trabajador"
             value={idTrab}

@@ -111,6 +111,7 @@ export async function listarConsumosPaginado(
     hasta?:          string | null;
     metodoPago?:     MetodoConsumo | null;
     soloPendientes?: 0 | 1 | null;
+    texto?:          string | null;
     limit: number; offset: number;
   }
 ): Promise<{ rows: Consumo[]; total: number }> {
@@ -120,6 +121,7 @@ export async function listarConsumosPaginado(
     p_fecha_hasta:     f.hasta ?? null,
     p_metodo_pago:     f.metodoPago ?? null,
     p_solo_pendientes: f.soloPendientes ?? null,
+    p_texto:           f.texto ?? null,
     p_limit:  f.limit,
     p_offset: f.offset,
   });
