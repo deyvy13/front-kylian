@@ -134,6 +134,28 @@ export async function ingresarStock(input: {
   return data as IngresoStockResultado;
 }
 
+export type AjusteStockResultado = {
+  stock_previo: number;
+  stock_nuevo: number;
+  cambio: number;
+  movimiento_id: number | null;
+};
+
+export async function ajustarStock(input: {
+  id_producto: number;
+  stock_real: number;
+  motivo: string;
+}): Promise<AjusteStockResultado> {
+  const { data, error } = await supabase.rpc("prd_stock_ajustar", {
+    p_id_producto: input.id_producto,
+    p_stock_real:  input.stock_real,
+    p_motivo:      input.motivo,
+    p_id_usuario:  getCurrentUserId(),
+  });
+  if (error) throw error;
+  return data as AjusteStockResultado;
+}
+
 export async function contarDependenciasProducto(idProducto: number): Promise<{ movimientos: number; consumos: number }> {
   const [mov, con] = await Promise.all([
     supabase.from("prd_movimientos").select("id", { count: "exact", head: true })

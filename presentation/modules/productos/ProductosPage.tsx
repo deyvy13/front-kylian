@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus, Eye, Pencil, Trash2, FileSpreadsheet, PackagePlus,
   Package, Layers, Coins, TrendingUp, ClipboardList, Undo2, ShoppingCart,
-  Wallet, AlertCircle,
+  Wallet, AlertCircle, Scale,
 } from "lucide-react";
 import { AuroraText } from "@/presentation/components/ui/AuroraText";
 import { Button } from "@/presentation/components/ui/Button";
@@ -31,6 +31,7 @@ import { ProductoDetalleModal } from "./ProductoDetalleModal";
 import { ConsumoFormModal } from "./ConsumoFormModal";
 import { ConfirmarEliminarModal } from "./ConfirmarEliminarModal";
 import { IngresoStockModal } from "./IngresoStockModal";
+import { AjustarStockModal } from "./AjustarStockModal";
 import { ExportarRangoModal } from "@/presentation/components/ui/ExportarRangoModal";
 
 const TABS: ModuleTab[] = [
@@ -91,6 +92,7 @@ function TabProductos() {
   const [detalleProd, setDetalleProd] = useState<Producto | null>(null);
   const [borrarProd, setBorrarProd] = useState<Producto | null>(null);
   const [ingresoProd, setIngresoProd] = useState<Producto | null>(null);
+  const [ajusteProd, setAjusteProd] = useState<Producto | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
 
   // Paginación server-side. El texto de búsqueda se envía al backend para
@@ -221,6 +223,9 @@ function TabProductos() {
                         <Button size="sm" variant="success" onClick={() => setIngresoProd(p)} title="Registrar ingreso de stock">
                           <PackagePlus className="h-4 w-4" />
                         </Button>
+                        <Button size="sm" variant="primary" onClick={() => setAjusteProd(p)} title="Ajustar stock por conteo físico">
+                          <Scale className="h-4 w-4" />
+                        </Button>
                         <Button size="sm" variant="warning" onClick={() => { setEditando(p); setFormOpen(true); }} title="Editar">
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -268,17 +273,20 @@ function TabProductos() {
                     <p className="font-bold text-[color:var(--success)]">{formatPEN(p.ganancia_unitaria)}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  <Button size="sm" variant="primary" onClick={() => setDetalleProd(p)}>
+                <div className="grid grid-cols-5 gap-1.5">
+                  <Button size="sm" variant="primary" onClick={() => setDetalleProd(p)} title="Ver">
                     <Eye className="h-4 w-4" />
                   </Button>
-                  <Button size="sm" variant="success" onClick={() => setIngresoProd(p)}>
+                  <Button size="sm" variant="success" onClick={() => setIngresoProd(p)} title="Ingreso">
                     <PackagePlus className="h-4 w-4" />
                   </Button>
-                  <Button size="sm" variant="warning" onClick={() => { setEditando(p); setFormOpen(true); }}>
+                  <Button size="sm" variant="primary" onClick={() => setAjusteProd(p)} title="Ajustar">
+                    <Scale className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="warning" onClick={() => { setEditando(p); setFormOpen(true); }} title="Editar">
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button size="sm" variant="danger" onClick={() => setBorrarProd(p)}>
+                  <Button size="sm" variant="danger" onClick={() => setBorrarProd(p)} title="Quitar">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -300,6 +308,10 @@ function TabProductos() {
       <IngresoStockModal
         open={!!ingresoProd} onClose={() => setIngresoProd(null)}
         onSaved={refrescar} producto={ingresoProd}
+      />
+      <AjustarStockModal
+        open={!!ajusteProd} onClose={() => setAjusteProd(null)}
+        onSaved={refrescar} producto={ajusteProd}
       />
       <ExportarRangoModal
         open={exportOpen}
