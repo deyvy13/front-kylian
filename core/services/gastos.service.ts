@@ -13,6 +13,18 @@ export async function listarGastos(f: {
   return (data ?? []) as Gasto[];
 }
 
+export async function sumaTotalGastos(f: {
+  desde?: string | null; hasta?: string | null; texto?: string | null;
+} = {}): Promise<number> {
+  const { data, error } = await supabase.rpc("gst_gastos_suma_total", {
+    p_fecha_desde: f.desde ?? null,
+    p_fecha_hasta: f.hasta ?? null,
+    p_texto:       f.texto ?? null,
+  });
+  if (error) throw error;
+  return Number(data ?? 0);
+}
+
 export async function listarGastosPaginado(
   f: { desde?: string | null; hasta?: string | null; texto?: string | null; limit: number; offset: number }
 ): Promise<{ rows: Gasto[]; total: number }> {

@@ -13,6 +13,7 @@ export async function exportarGastosExcel(
   rango: { from: string | null; to: string | null }
 ) {
   const gastos = await listarGastos({ desde: rango.from, hasta: rango.to });
+  const total = gastos.reduce((a, g) => a + Number(g.monto), 0);
 
   await exportExcelTable({
     filename: `gastos_${fmtRango(rango.from, rango.to)}.xlsx`,
@@ -29,5 +30,11 @@ export async function exportarGastosExcel(
       monto:    Number(g.monto),
       reg:      limaWallDate(g.fecha_creacion),
     })),
+    footerRow: {
+      fecha:    "",
+      concepto: "TOTAL DE GASTOS",
+      monto:    total,
+      reg:      "",
+    },
   });
 }

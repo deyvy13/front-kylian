@@ -9,7 +9,7 @@ import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/
 import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
 import { ExportarRangoModal } from "@/presentation/components/ui/ExportarRangoModal";
 import { useToast } from "@/presentation/components/ui/Toast";
-import { eliminarGasto, listarGastosPaginado } from "@/core/services/gastos.service";
+import { eliminarGasto, listarGastosPaginado, sumaTotalGastos } from "@/core/services/gastos.service";
 import { Pagination } from "@/presentation/components/ui/Pagination";
 import type { Gasto } from "@/core/types";
 import { getErrorMessage, coincideBusqueda, formatDateLima, formatPEN } from "@/core/lib/utils";
@@ -26,6 +26,7 @@ export function GastosPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
+  const [sumaTotal, setSumaTotal] = useState(0);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<Gasto | null>(null);
@@ -35,13 +36,17 @@ export function GastosPage() {
   const refrescar = useCallback(async () => {
     setLoading(true);
     try {
-      const { rows, total: t } = await listarGastosPaginado({
-        desde: rango.from, hasta: rango.to,
-        texto: texto || null,
-        limit: pageSize, offset: (page - 1) * pageSize,
-      });
-      setGastos(rows);
-      setTotal(t);
+      const [pagRes, sumaRes] = await Promise.all([
+        listarGastosPaginado({
+          desde: rango.from, hasta: rango.to,
+          texto: texto || null,
+          limit: pageSize, offset: (page - 1) * pageSize,
+        }),
+        sumaTotalGastos({ desde: rango.from, hasta: rango.to, texto: texto || null }),
+      ]);
+      setGastos(pagRes.rows);
+      setTotal(pagRes.total);
+      setSumaTotal(sumaRes);
     }
     catch (e) { toast.push("error", getErrorMessage(e, "Error al cargar gastos")); }
     finally { setLoading(false); }
@@ -92,9 +97,9 @@ export function GastosPage() {
         <StatCard label="Gastos registrados" value={total}
           icon={<Receipt className="h-4 w-4" />} accent="primary"
           hint="Total del filtro (todas las páginas)" />
-        <StatCard label="Total en esta página" value={formatPEN(totalMontoPagina)}
+        <StatCard label="Total del filtro" value={formatPEN(sumaTotal)}
           icon={<Coins className="h-4 w-4" />} accent="danger"
-          hint={`${filtrados.length} de ${total} registro(s)`} />
+          hint="Suma de todos los gastos del rango" />
       </div>
 
       {loading ? (
