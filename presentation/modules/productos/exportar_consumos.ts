@@ -172,13 +172,40 @@ export async function exportarConsumosExcel(
     { header: "Nota",                 key: "nota",             width: 40 },
   ];
 
+  const totalDetalleDeudas = hojaDetalle.reduce((a, r) => a + Number(r.total ?? 0), 0);
+  const totalDeudasPorTrab = hojaDeudasPorTrab.reduce((a, r) => a + Number(r.total ?? 0), 0);
+
   await exportExcelMulti({
     filename: `consumos_${fmtRango(rango.from, rango.to)}.xlsx`,
     sheets: [
-      { name: "DETALLE DEUDAS",           columns: detalleCols,        rows: hojaDetalle },
-      { name: "DEUDAS POR TRABAJADOR",    columns: totalPorTrabCols,   rows: hojaDeudasPorTrab },
-      { name: "TOTAL CONSUMOS",           columns: totalCols,          rows: hojaTotal },
-      { name: "DETALLE TOTAL CONSUMOS",   columns: detalleTotalCols,   rows: hojaDetalleTotal },
+      {
+        name: "DETALLE DEUDAS",
+        columns: detalleCols,
+        rows: hojaDetalle,
+        footerRow: {
+          trabajador: "",
+          dni: "",
+          producto: "",
+          unidad: "",
+          cantidad: "",
+          precio: "TOTAL",
+          total: totalDetalleDeudas,
+          fecha: "",
+        },
+      },
+      {
+        name: "DEUDAS POR TRABAJADOR",
+        columns: totalPorTrabCols,
+        rows: hojaDeudasPorTrab,
+        footerRow: {
+          trabajador: "",
+          dni: "",
+          registros: "TOTAL",
+          total: totalDeudasPorTrab,
+        },
+      },
+      { name: "TOTAL CONSUMOS",         columns: totalCols,        rows: hojaTotal },
+      { name: "DETALLE TOTAL CONSUMOS", columns: detalleTotalCols, rows: hojaDetalleTotal },
     ],
   });
 }

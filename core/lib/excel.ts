@@ -16,7 +16,41 @@ export type SheetDef = {
   name: string;
   columns: ColumnDef[];
   rows: Array<Record<string, unknown>>;
+  /** Fila final destacada (bold + fondo azul claro). */
+  footerRow?: Record<string, unknown>;
 };
+
+function applyFooterStyle(
+  ws: ExcelJS.Worksheet,
+  columns: ColumnDef[],
+  footerRow: Record<string, unknown>
+) {
+  const row = ws.addRow(footerRow);
+  columns.forEach((c, idx) => {
+    const cell = row.getCell(idx + 1);
+    if (c.kind === "currency") cell.numFmt = '"S/" #,##0.00';
+    else if (c.kind === "number") {
+      const v = cell.value;
+      if (typeof v === "number") {
+        cell.numFmt = Number.isInteger(v) ? "#,##0" : "#,##0.##";
+      }
+    }
+    else if (c.kind === "date")      cell.numFmt = "dd/mm/yyyy hh:mm";
+    else if (c.kind === "date-only") cell.numFmt = "dd/mm/yyyy";
+  });
+  row.eachCell((cell) => {
+    cell.font = { bold: true, size: 12, color: { argb: "FF0056D6" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDE7F7" } };
+    cell.alignment = { vertical: "middle" };
+    cell.border = {
+      top:    { style: "medium", color: { argb: HEADER_FILL } },
+      bottom: { style: "medium", color: { argb: HEADER_FILL } },
+      left:   { style: "thin",   color: { argb: BORDER_COLOR } },
+      right:  { style: "thin",   color: { argb: BORDER_COLOR } },
+    };
+  });
+  row.height = 24;
+}
 
 function applySheetStyle(ws: ExcelJS.Worksheet, columns: ColumnDef[]) {
   // Formato por columna (currency y date se pueden aplicar directo).
@@ -117,34 +151,7 @@ export async function exportExcelTable(opts: {
   opts.rows.forEach((r) => ws.addRow(r));
   applySheetStyle(ws, opts.columns);
 
-  if (opts.footerRow) {
-    const row = ws.addRow(opts.footerRow);
-    // Aplicar formato per-columna a la fila total (same numFmt como el body)
-    opts.columns.forEach((c, idx) => {
-      const cell = row.getCell(idx + 1);
-      if (c.kind === "currency") cell.numFmt = '"S/" #,##0.00';
-      else if (c.kind === "number") {
-        const v = cell.value;
-        if (typeof v === "number") {
-          cell.numFmt = Number.isInteger(v) ? "#,##0" : "#,##0.##";
-        }
-      }
-      else if (c.kind === "date")      cell.numFmt = "dd/mm/yyyy hh:mm";
-      else if (c.kind === "date-only") cell.numFmt = "dd/mm/yyyy";
-    });
-    row.eachCell((cell) => {
-      cell.font = { bold: true, size: 12, color: { argb: "FF0056D6" } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDE7F7" } };
-      cell.alignment = { vertical: "middle" };
-      cell.border = {
-        top:    { style: "medium", color: { argb: HEADER_FILL } },
-        bottom: { style: "medium", color: { argb: HEADER_FILL } },
-        left:   { style: "thin",   color: { argb: BORDER_COLOR } },
-        right:  { style: "thin",   color: { argb: BORDER_COLOR } },
-      };
-    });
-    row.height = 24;
-  }
+  if (opts.footerRow) applyFooterStyle(ws, opts.columns, opts.footerRow);
 
   await saveWorkbook(wb, opts.filename);
 }
@@ -163,6 +170,7 @@ export async function exportExcelMulti(opts: {
     ws.columns = s.columns.map((c) => ({ header: c.header, key: c.key, width: c.width ?? 18 }));
     s.rows.forEach((r) => ws.addRow(r));
     applySheetStyle(ws, s.columns);
+    if (s.footerRow) applyFooterStyle(ws, s.columns, s.footerRow);
   }
 
   await saveWorkbook(wb, opts.filename);
