@@ -1,5 +1,5 @@
 import { exportExcelTable } from "@/core/lib/excel";
-import { listarGastos } from "@/core/services/gastos.service";
+import { listarGastosCompleto } from "@/core/services/gastos.service";
 import { limaWallDate } from "@/core/lib/utils";
 
 function fmtRango(desde: string | null, hasta: string | null): string {
@@ -12,7 +12,7 @@ function fmtRango(desde: string | null, hasta: string | null): string {
 export async function exportarGastosExcel(
   rango: { from: string | null; to: string | null }
 ) {
-  const gastos = await listarGastos({ desde: rango.from, hasta: rango.to });
+  const gastos = await listarGastosCompleto({ desde: rango.from, hasta: rango.to });
   const total = gastos.reduce((a, g) => a + Number(g.monto), 0);
 
   await exportExcelTable({

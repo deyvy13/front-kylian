@@ -2,7 +2,7 @@ import type { Consumo, MetodoConsumo } from "@/core/types";
 import { exportExcelMulti, type ColumnDef } from "@/core/lib/excel";
 import { limaWallDate } from "@/core/lib/utils";
 import { LABEL_METODO } from "./metodoUi";
-import { listarConsumos } from "@/core/services/trabajadores.service";
+import { listarConsumosCompleto } from "@/core/services/trabajadores.service";
 
 function fmtRango(desde: string | null, hasta: string | null): string {
   const clean = (s: string | null) => (s ?? "").replaceAll("-", "");
@@ -23,8 +23,9 @@ function fmtRango(desde: string | null, hasta: string | null): string {
 export async function exportarConsumosExcel(
   rango: { from: string | null; to: string | null }
 ) {
-  // Trae SIEMPRE con el rango elegido en el modal (no usa filtros de pantalla)
-  const consumos: Consumo[] = await listarConsumos({
+  // Trae TODOS los consumos del rango, paginando internamente (evita el corte
+  // de max-rows de PostgREST/Supabase que corta a 1000).
+  const consumos: Consumo[] = await listarConsumosCompleto({
     desde: rango.from, hasta: rango.to,
   });
   const deudas = consumos.filter((c) => c.metodo_pago === "credito" && c.pagado === 0);

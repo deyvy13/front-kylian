@@ -19,6 +19,32 @@ export async function listarProductos(f: FiltrosProducto = {}): Promise<Producto
   return (data ?? []) as Producto[];
 }
 
+/** Trae TODOS los productos del filtro paginando internamente en chunks
+ *  de 1000 para evitar el corte del `max-rows` de PostgREST/Supabase. */
+export async function listarProductosCompleto(f: FiltrosProducto = {}): Promise<Producto[]> {
+  const CHUNK = 1000;
+  const all: Producto[] = [];
+  let offset = 0;
+  let chunkIdx = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      const { rows } = await listarProductosPaginado({ ...f, limit: CHUNK, offset });
+      all.push(...rows);
+      if (rows.length < CHUNK) break;
+      offset += CHUNK;
+      chunkIdx += 1;
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Error al descargar productos (chunk #${chunkIdx + 1}, offset ${offset}, ` +
+        `traídos hasta ahora ${all.length}): ${raw}`
+      );
+    }
+  }
+  return all;
+}
+
 export async function listarProductosPaginado(
   f: FiltrosProducto & { limit: number; offset: number }
 ): Promise<{ rows: Producto[]; total: number }> {

@@ -104,6 +104,39 @@ export async function listarConsumos(f: {
   return (data ?? []) as Consumo[];
 }
 
+/** Trae TODOS los consumos del filtro paginando internamente en chunks
+ *  de 1000 para evitar el corte del `max-rows` de PostgREST/Supabase. */
+export async function listarConsumosCompleto(f: {
+  idTrabajador?:   number | null;
+  desde?:          string | null;
+  hasta?:          string | null;
+  metodoPago?:     MetodoConsumo | null;
+  soloPendientes?: 0 | 1 | null;
+  texto?:          string | null;
+} = {}): Promise<Consumo[]> {
+  const CHUNK = 1000;
+  const all: Consumo[] = [];
+  let offset = 0;
+  let chunkIdx = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      const { rows } = await listarConsumosPaginado({ ...f, limit: CHUNK, offset });
+      all.push(...rows);
+      if (rows.length < CHUNK) break;
+      offset += CHUNK;
+      chunkIdx += 1;
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Error al descargar consumos (chunk #${chunkIdx + 1}, offset ${offset}, ` +
+        `traídos hasta ahora ${all.length}): ${raw}`
+      );
+    }
+  }
+  return all;
+}
+
 export async function listarConsumosPaginado(
   f: {
     idTrabajador?:   number | null;

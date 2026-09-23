@@ -1,5 +1,5 @@
 import { exportExcelTable } from "@/core/lib/excel";
-import { listarProductos } from "@/core/services/productos.service";
+import { listarProductosCompleto } from "@/core/services/productos.service";
 import { limaWallDate } from "@/core/lib/utils";
 
 function fmtRango(desde: string | null, hasta: string | null): string {
@@ -12,7 +12,7 @@ function fmtRango(desde: string | null, hasta: string | null): string {
 export async function exportarProductosExcel(
   rango: { from: string | null; to: string | null }
 ) {
-  const productos = await listarProductos({ desde: rango.from, hasta: rango.to });
+  const productos = await listarProductosCompleto({ desde: rango.from, hasta: rango.to });
 
   await exportExcelTable({
     filename: `productos_${fmtRango(rango.from, rango.to)}.xlsx`,

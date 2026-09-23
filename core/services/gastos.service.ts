@@ -13,6 +13,34 @@ export async function listarGastos(f: {
   return (data ?? []) as Gasto[];
 }
 
+/** Trae TODOS los gastos del filtro paginando internamente en chunks
+ *  de 1000 para evitar el corte del `max-rows` de PostgREST/Supabase. */
+export async function listarGastosCompleto(f: {
+  desde?: string | null; hasta?: string | null; texto?: string | null;
+} = {}): Promise<Gasto[]> {
+  const CHUNK = 1000;
+  const all: Gasto[] = [];
+  let offset = 0;
+  let chunkIdx = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      const { rows } = await listarGastosPaginado({ ...f, limit: CHUNK, offset });
+      all.push(...rows);
+      if (rows.length < CHUNK) break;
+      offset += CHUNK;
+      chunkIdx += 1;
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Error al descargar gastos (chunk #${chunkIdx + 1}, offset ${offset}, ` +
+        `traídos hasta ahora ${all.length}): ${raw}`
+      );
+    }
+  }
+  return all;
+}
+
 export async function sumaTotalGastos(f: {
   desde?: string | null; hasta?: string | null; texto?: string | null;
 } = {}): Promise<number> {
