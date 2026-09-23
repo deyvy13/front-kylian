@@ -111,6 +111,13 @@ export type IngresoStockResultado = {
   cambio_precio: boolean;
 };
 
+export type DashboardConsumosData = {
+  rango: { desde: string; hasta: string };
+  kpis: { registros: number; cantidad: number; valor: number; deuda: number };
+  serie: { fecha: string; total: number; credito: number }[];
+  por_metodo: { metodo: MetodoConsumo; valor: number }[];
+};
+
 export type Gasto = {
   id: number;
   monto: number;

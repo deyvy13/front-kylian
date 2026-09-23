@@ -15,9 +15,9 @@ import { Table, Thead, Tr, Th, Td, EmptyState } from "@/presentation/components/
 import { DateRangeFilter, type DateRange } from "@/presentation/components/ui/DateRangeFilter";
 import { ModuleTabs, type ModuleTab } from "@/presentation/components/ui/ModuleTabs";
 import { useToast } from "@/presentation/components/ui/Toast";
-import { eliminarProducto, listarProductosPaginado } from "@/core/services/productos.service";
+import { eliminarProducto, listarProductosPaginado, totalesProductos, type ProductosTotales } from "@/core/services/productos.service";
 import { Pagination } from "@/presentation/components/ui/Pagination";
-import { listarConsumosPaginado, listarTrabajadores, revertirConsumo, revertirPago } from "@/core/services/trabajadores.service";
+import { listarConsumosPaginado, listarTrabajadores, revertirConsumo, revertirPago, totalesConsumos, type ConsumosTotales } from "@/core/services/trabajadores.service";
 import type { MetodoConsumo } from "@/core/types";
 import { LABEL_METODO, CHIP_METODO } from "./metodoUi";
 import { PagoFormModal } from "./PagoFormModal";
@@ -86,6 +86,9 @@ function TabProductos() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
+  const [totalesGlobales, setTotalesGlobales] = useState<ProductosTotales>({
+    total_productos: 0, stock_total: 0, valor_stock: 0, ganancia_total: 0,
+  });
 
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<Producto | null>(null);
@@ -100,14 +103,18 @@ function TabProductos() {
   const refrescar = useCallback(async () => {
     setLoading(true);
     try {
-      const { rows, total } = await listarProductosPaginado({
+      const filtros = {
         idTipo: idTipo === "" ? null : idTipo,
         desde: rango.from, hasta: rango.to,
         texto: texto || null,
-        limit: pageSize, offset: (page - 1) * pageSize,
-      });
-      setProductos(rows);
-      setTotal(total);
+      };
+      const [pagRes, totRes] = await Promise.all([
+        listarProductosPaginado({ ...filtros, limit: pageSize, offset: (page - 1) * pageSize }),
+        totalesProductos(filtros),
+      ]);
+      setProductos(pagRes.rows);
+      setTotal(pagRes.total);
+      setTotalesGlobales(totRes);
     } catch (e) {
       toast.push("error", getErrorMessage(e, "Error al cargar productos"));
     } finally { setLoading(false); }
@@ -125,16 +132,12 @@ function TabProductos() {
   // Ya no hay filtro cliente sobre `texto`: la búsqueda va al backend.
   const filtrados = productos;
 
-  const kpis = useMemo(() => {
-    const total = filtrados.length;
-    const stock = filtrados.reduce((a, p) => a + Number(p.stock_actual), 0);
-    const valorStock = filtrados.reduce((a, p) => a + Number(p.stock_actual) * Number(p.precio_compra), 0);
-    const gananciaTotal = filtrados.reduce(
-      (a, p) => a + Number(p.stock_actual) * Number(p.ganancia_unitaria),
-      0
-    );
-    return { total, stock, valorStock, gananciaTotal };
-  }, [filtrados]);
+  const kpis = useMemo(() => ({
+    total:         Number(totalesGlobales.total_productos),
+    stock:         Number(totalesGlobales.stock_total),
+    valorStock:    Number(totalesGlobales.valor_stock),
+    gananciaTotal: Number(totalesGlobales.ganancia_total),
+  }), [totalesGlobales]);
 
   return (
     <div className="space-y-5">
@@ -354,6 +357,9 @@ function TabConsumos() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
+  const [totalesGlobales, setTotalesGlobales] = useState<ConsumosTotales>({
+    registros: 0, cantidad_total: 0, valor_total: 0, deuda_total: 0,
+  });
 
   const [formOpen, setFormOpen] = useState(false);
   const [pagoOpen, setPagoOpen] = useState(false);
@@ -368,16 +374,20 @@ function TabConsumos() {
   const refrescar = useCallback(async () => {
     setLoading(true);
     try {
-      const { rows, total: t } = await listarConsumosPaginado({
+      const filtros = {
         idTrabajador: idTrab === "" ? null : idTrab,
         desde: rango.from, hasta: rango.to,
         metodoPago: metodo || null,
         soloPendientes: pendientes === "pendientes" ? 1 : pendientes === "pagados" ? 0 : null,
         texto: textoConsumos || null,
-        limit: pageSize, offset: (page - 1) * pageSize,
-      });
-      setConsumos(rows);
-      setTotal(t);
+      } as const;
+      const [pagRes, totRes] = await Promise.all([
+        listarConsumosPaginado({ ...filtros, limit: pageSize, offset: (page - 1) * pageSize }),
+        totalesConsumos(filtros),
+      ]);
+      setConsumos(pagRes.rows);
+      setTotal(pagRes.total);
+      setTotalesGlobales(totRes);
     } catch (e) { toast.push("error", getErrorMessage(e, "Error")); }
     finally { setLoading(false); }
   }, [idTrab, rango.from, rango.to, metodo, pendientes, textoConsumos, page, pageSize, toast]);
@@ -388,13 +398,12 @@ function TabConsumos() {
   const activosSet = useMemo(() => new Set(trabajadores.map((t) => t.id)), [trabajadores]);
   const esInactivo = (idT: number | null) => idT != null && !activosSet.has(idT);
 
-  const totales = useMemo(() => {
-    const cantidad = consumos.reduce((a, c) => a + Number(c.cantidad), 0);
-    const valor    = consumos.reduce((a, c) => a + Number(c.total), 0);
-    const deuda    = consumos.filter((c) => c.metodo_pago === "credito" && c.pagado === 0)
-                              .reduce((a, c) => a + Number(c.total), 0);
-    return { registros: consumos.length, cantidad, valor, deuda };
-  }, [consumos]);
+  const totales = useMemo(() => ({
+    registros: Number(totalesGlobales.registros),
+    cantidad:  Number(totalesGlobales.cantidad_total),
+    valor:     Number(totalesGlobales.valor_total),
+    deuda:     Number(totalesGlobales.deuda_total),
+  }), [totalesGlobales]);
 
   return (
     <div className="space-y-5">

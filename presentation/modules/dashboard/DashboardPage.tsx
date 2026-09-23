@@ -12,9 +12,9 @@ import { DateRangeFilter, rangePresets, type DateRange } from "@/presentation/co
 import { ModuleTabs, type ModuleTab } from "@/presentation/components/ui/ModuleTabs";
 import { cn, getErrorMessage, formatDateLima, formatPEN } from "@/core/lib/utils";
 import { dashboardResumen } from "@/core/services/productos.service";
-import { listarConsumos, listarDeudasPorTrabajador } from "@/core/services/trabajadores.service";
+import { dashboardConsumos, listarDeudasPorTrabajador } from "@/core/services/trabajadores.service";
 import { dashboardFinanzas } from "@/core/services/gastos.service";
-import type { Consumo, DashboardFinanzas, DashboardResumen, DeudaTrabajador, MetodoConsumo } from "@/core/types";
+import type { DashboardConsumosData, DashboardFinanzas, DashboardResumen, DeudaTrabajador, MetodoConsumo } from "@/core/types";
 import { LABEL_METODO } from "@/presentation/modules/productos/metodoUi";
 import { useToast } from "@/presentation/components/ui/Toast";
 
@@ -302,16 +302,17 @@ function DashboardProductos({ rango, onError }: { rango: DateRange; onError: (m:
 
 /* ---------------- Consumos ---------------- */
 function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: string) => void }) {
-  const [consumos, setConsumos] = useState<Consumo[]>([]);
+  const [data, setData] = useState<DashboardConsumosData | null>(null);
   const [deudas, setDeudas] = useState<DeudaTrabajador[]>([]);
   const [loading, setLoading] = useState(true);
   const deudaGlobal = useMemo(() => deudas.reduce((a, d) => a + Number(d.total_deuda), 0), [deudas]);
 
+  // Dashboard agregado por rango — una sola query, sin cortes.
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    listarConsumos({ desde: rango.from, hasta: rango.to })
-      .then((d) => { if (alive) setConsumos(d); })
+    dashboardConsumos(rango.from, rango.to)
+      .then((d) => { if (alive) setData(d); })
       .catch((e) => onError(getErrorMessage(e, "Error al cargar consumos")))
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
@@ -327,45 +328,39 @@ function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: 
     return () => { alive = false; };
   }, []);
 
-  const kpis = useMemo(() => {
-    const registros = consumos.length;
-    const valor     = consumos.reduce((a, c) => a + Number(c.total), 0);
-    const cantidad  = consumos.reduce((a, c) => a + Number(c.cantidad), 0);
-    return { registros, valor, cantidad };
-  }, [consumos]);
+  const kpis = useMemo(() => ({
+    registros: Number(data?.kpis.registros ?? 0),
+    cantidad:  Number(data?.kpis.cantidad ?? 0),
+    valor:     Number(data?.kpis.valor ?? 0),
+  }), [data]);
 
-  // Serie diaria: total consumido por día
-  const serie = useMemo(() => {
-    const map = new Map<string, { fecha: string; total: number; credito: number }>();
-    consumos.forEach((c) => {
-      const key = c.fecha_consumo.slice(0, 10);
-      const cur = map.get(key) ?? { fecha: key, total: 0, credito: 0 };
-      cur.total += Number(c.total);
-      if (c.metodo_pago === "credito") cur.credito += Number(c.total);
-      map.set(key, cur);
-    });
-    return Array.from(map.values())
-      .sort((a, b) => a.fecha.localeCompare(b.fecha))
-      .map((r) => ({ ...r, fecha: formatDateLima(r.fecha).slice(0, 5) }));
-  }, [consumos]);
+  // Serie diaria — ya viene ordenada del SQL, solo formateamos la fecha display.
+  const serie = useMemo(() =>
+    (data?.serie ?? []).map((r) => ({
+      ...r,
+      fecha: formatDateLima(r.fecha).slice(0, 5),
+    })), [data]);
 
-  // Bar chart: valor por método de pago
+  // Bar chart por método — normaliza a los 4 métodos y usa labels legibles.
   const porMetodo = useMemo(() => {
     const acc: Record<MetodoConsumo, number> = { credito: 0, efectivo: 0, yape: 0, deposito: 0 };
-    consumos.forEach((c) => { acc[c.metodo_pago] += Number(c.total); });
+    (data?.por_metodo ?? []).forEach((r) => {
+      if (r.metodo in acc) acc[r.metodo] = Number(r.valor);
+    });
     return (Object.keys(acc) as MetodoConsumo[]).map((m) => ({
       metodo: LABEL_METODO[m], valor: acc[m],
     }));
-  }, [consumos]);
+  }, [data]);
 
-  // Top trabajadores por deuda pendiente — usa las deudas globales, no las del rango
-  const topDeuda = useMemo(() =>
-    deudas.slice(0, 6).map((d) => ({
+  // Top deudas — ordena en cliente por seguridad (NUMERIC de Postgres viene como string).
+  const topDeuda = useMemo(() => {
+    const sorted = [...deudas].sort((a, b) => Number(b.total_deuda) - Number(a.total_deuda));
+    return sorted.slice(0, 6).map((d) => ({
       trabajador: d.trabajador,
       deuda: Number(d.total_deuda),
       activo: d.activo === 1,
-    })),
-  [deudas]);
+    }));
+  }, [deudas]);
 
   return (
     <div className="space-y-5">

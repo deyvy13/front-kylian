@@ -19,6 +19,25 @@ export async function listarProductos(f: FiltrosProducto = {}): Promise<Producto
   return (data ?? []) as Producto[];
 }
 
+export type ProductosTotales = {
+  total_productos: number;
+  stock_total: number;
+  valor_stock: number;
+  ganancia_total: number;
+};
+
+export async function totalesProductos(f: FiltrosProducto = {}): Promise<ProductosTotales> {
+  const { data, error } = await supabase.rpc("prd_productos_totales", {
+    p_id_tipo_producto: f.idTipo ?? null,
+    p_fecha_desde:      f.desde ?? null,
+    p_fecha_hasta:      f.hasta ?? null,
+    p_texto:            f.texto ?? null,
+  });
+  if (error) throw error;
+  const row = (data ?? [])[0] as ProductosTotales | undefined;
+  return row ?? { total_productos: 0, stock_total: 0, valor_stock: 0, ganancia_total: 0 };
+}
+
 /** Trae TODOS los productos del filtro paginando internamente en chunks
  *  de 1000 para evitar el corte del `max-rows` de PostgREST/Supabase. */
 export async function listarProductosCompleto(f: FiltrosProducto = {}): Promise<Producto[]> {

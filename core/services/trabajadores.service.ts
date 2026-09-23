@@ -1,5 +1,5 @@
 import { supabase, getCurrentUserId } from "@/core/lib/supabase";
-import type { Consumo, DeudaTrabajador, MetodoConsumo, MetodoPago, Pago, Trabajador, TrabajadorResumen } from "@/core/types";
+import type { Consumo, DashboardConsumosData, DeudaTrabajador, MetodoConsumo, MetodoPago, Pago, Trabajador, TrabajadorResumen } from "@/core/types";
 
 export async function listarTrabajadores(texto?: string | null, estado: 0 | 1 = 1): Promise<Trabajador[]> {
   const { data, error } = await supabase.rpc("trb_trabajadores_listar", {
@@ -102,6 +102,42 @@ export async function listarConsumos(f: {
   });
   if (error) throw error;
   return (data ?? []) as Consumo[];
+}
+
+export async function dashboardConsumos(desde: string | null, hasta: string | null): Promise<DashboardConsumosData> {
+  const { data, error } = await supabase.rpc("trb_consumos_dashboard", {
+    p_fecha_desde: desde, p_fecha_hasta: hasta,
+  });
+  if (error) throw error;
+  return data as DashboardConsumosData;
+}
+
+export type ConsumosTotales = {
+  registros: number;
+  cantidad_total: number;
+  valor_total: number;
+  deuda_total: number;
+};
+
+export async function totalesConsumos(f: {
+  idTrabajador?:   number | null;
+  desde?:          string | null;
+  hasta?:          string | null;
+  metodoPago?:     MetodoConsumo | null;
+  soloPendientes?: 0 | 1 | null;
+  texto?:          string | null;
+} = {}): Promise<ConsumosTotales> {
+  const { data, error } = await supabase.rpc("trb_consumos_totales", {
+    p_id_trabajador:   f.idTrabajador ?? null,
+    p_fecha_desde:     f.desde ?? null,
+    p_fecha_hasta:     f.hasta ?? null,
+    p_metodo_pago:     f.metodoPago ?? null,
+    p_solo_pendientes: f.soloPendientes ?? null,
+    p_texto:           f.texto ?? null,
+  });
+  if (error) throw error;
+  const row = (data ?? [])[0] as ConsumosTotales | undefined;
+  return row ?? { registros: 0, cantidad_total: 0, valor_total: 0, deuda_total: 0 };
 }
 
 /** Trae TODOS los consumos del filtro paginando internamente en chunks
