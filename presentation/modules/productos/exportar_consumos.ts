@@ -34,6 +34,7 @@ export async function exportarConsumosExcel(
   const hojaDetalle = deudas.map((c) => ({
     trabajador: c.trabajador + (c.trabajador_activo === 0 ? " (inactivo)" : ""),
     dni:        c.dni ?? "",
+    labor:      c.labor ?? "",
     producto:   c.producto + (c.producto_activo === 0 ? " (eliminado)" : ""),
     unidad:     c.unidad_medida ?? "",
     cantidad:   Number(c.cantidad),
@@ -43,12 +44,12 @@ export async function exportarConsumosExcel(
   }));
 
   // ------ Hoja 2: DEUDAS POR TRABAJADOR ------
-  const mapDeudas = new Map<string, { trabajador: string; dni: string; registros: number; total: number }>();
+  const mapDeudas = new Map<string, { trabajador: string; dni: string; labor: string; registros: number; total: number }>();
   deudas.forEach((c) => {
     const key = c.id_trabajador != null ? `t-${c.id_trabajador}` : `x-${c.trabajador}`;
     const cur = mapDeudas.get(key) ?? {
       trabajador: c.trabajador + (c.trabajador_activo === 0 ? " (inactivo)" : ""),
-      dni: c.dni ?? "", registros: 0, total: 0,
+      dni: c.dni ?? "", labor: c.labor ?? "", registros: 0, total: 0,
     };
     cur.registros += 1;
     cur.total += Number(c.total);
@@ -84,7 +85,7 @@ export async function exportarConsumosExcel(
   // ------ Hoja 4: DETALLE TOTAL CONSUMOS (agrupado por trabajador + tipo) ------
   // 1 fila crédito por trabajador (pagado + pendiente); 1 fila consumo regular por trabajador
   type ResumenTrab = {
-    trabajador: string; dni: string;
+    trabajador: string; dni: string; labor: string;
     creditoRegistros: number; creditoPagado: number; creditoPendiente: number;
     regRegistros: number; regTotal: number;
     regMetodos: Set<MetodoConsumo>;
@@ -95,6 +96,7 @@ export async function exportarConsumosExcel(
     const cur = map.get(key) ?? {
       trabajador: c.trabajador + (c.trabajador_activo === 0 ? " (inactivo)" : ""),
       dni: c.dni ?? "",
+      labor: c.labor ?? "",
       creditoRegistros: 0, creditoPagado: 0, creditoPendiente: 0,
       regRegistros: 0, regTotal: 0, regMetodos: new Set<MetodoConsumo>(),
     };
@@ -118,6 +120,7 @@ export async function exportarConsumosExcel(
         hojaDetalleTotal.push({
           trabajador: r.trabajador,
           dni: r.dni,
+          labor: r.labor,
           tipo: "Crédito (a cobrar)",
           registros: r.creditoRegistros,
           total_consumido: r.creditoPagado + r.creditoPendiente,
@@ -130,6 +133,7 @@ export async function exportarConsumosExcel(
         hojaDetalleTotal.push({
           trabajador: r.trabajador,
           dni: r.dni,
+          labor: r.labor,
           tipo: "Consumo regular (NO se cobra)",
           registros: r.regRegistros,
           total_consumido: r.regTotal,
@@ -143,6 +147,7 @@ export async function exportarConsumosExcel(
   const detalleCols: ColumnDef[] = [
     { header: "Trabajador",           key: "trabajador", width: 30 },
     { header: "DNI",                  key: "dni",        width: 12 },
+    { header: "Labor",                key: "labor",      width: 20 },
     { header: "Producto",             key: "producto",   width: 30 },
     { header: "Unidad",               key: "unidad",     width: 14 },
     { header: "Cantidad",             key: "cantidad",   width: 12, kind: "number" },
@@ -153,6 +158,7 @@ export async function exportarConsumosExcel(
   const totalPorTrabCols: ColumnDef[] = [
     { header: "Trabajador",       key: "trabajador", width: 32 },
     { header: "DNI",              key: "dni",        width: 12 },
+    { header: "Labor",            key: "labor",      width: 20 },
     { header: "Deudas activas",   key: "registros",  width: 16, kind: "number" },
     { header: "Total deuda (S/)", key: "total",      width: 20, kind: "currency" },
   ];
@@ -164,6 +170,7 @@ export async function exportarConsumosExcel(
   const detalleTotalCols: ColumnDef[] = [
     { header: "Trabajador",           key: "trabajador",       width: 30 },
     { header: "DNI",                  key: "dni",              width: 12 },
+    { header: "Labor",                key: "labor",            width: 20 },
     { header: "Tipo",                 key: "tipo",             width: 30 },
     { header: "Registros",            key: "registros",        width: 12, kind: "number" },
     { header: "Total consumido (S/)", key: "total_consumido",  width: 20, kind: "currency" },
@@ -185,6 +192,7 @@ export async function exportarConsumosExcel(
         footerRow: {
           trabajador: "",
           dni: "",
+          labor: "",
           producto: "",
           unidad: "",
           cantidad: "",
@@ -200,6 +208,7 @@ export async function exportarConsumosExcel(
         footerRow: {
           trabajador: "",
           dni: "",
+          labor: "",
           registros: "TOTAL",
           total: totalDeudasPorTrab,
         },

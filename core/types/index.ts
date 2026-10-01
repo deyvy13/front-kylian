@@ -26,6 +26,7 @@ export type Consumo = {
   id_trabajador: number | null;
   trabajador: string;
   dni: string | null;
+  labor: string | null;
   trabajador_activo?: 0 | 1;
   id_producto: number;
   producto: string;
