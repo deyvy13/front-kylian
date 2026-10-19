@@ -38,6 +38,8 @@ export type Consumo = {
   metodo_pago: MetodoConsumo;
   pagado: 0 | 1;
   id_pago: number | null;
+  /** Método con el que se saldó el crédito (viene de trb_pagos.metodo_pago). */
+  pago_metodo: MetodoPago | null;
   fecha_consumo: string;
 };
 
@@ -116,7 +118,9 @@ export type DashboardConsumosData = {
   rango: { desde: string; hasta: string };
   kpis: { registros: number; cantidad: number; valor: number; deuda: number };
   serie: { fecha: string; total: number; credito: number }[];
-  por_metodo: { metodo: MetodoConsumo; valor: number }[];
+  // metodo puede ser MetodoConsumo (créditos pendientes mantienen "credito")
+  // o MetodoPago (créditos ya saldados vienen con el método real del pago).
+  por_metodo: { metodo: MetodoConsumo | MetodoPago; valor: number }[];
 };
 
 export type Gasto = {

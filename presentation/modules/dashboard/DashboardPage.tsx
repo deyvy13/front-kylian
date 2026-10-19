@@ -14,7 +14,7 @@ import { cn, getErrorMessage, formatDateLima, formatPEN } from "@/core/lib/utils
 import { dashboardResumen } from "@/core/services/productos.service";
 import { dashboardConsumos, listarDeudasPorTrabajador } from "@/core/services/trabajadores.service";
 import { dashboardFinanzas } from "@/core/services/gastos.service";
-import type { DashboardConsumosData, DashboardFinanzas, DashboardResumen, DeudaTrabajador, MetodoConsumo } from "@/core/types";
+import type { DashboardConsumosData, DashboardFinanzas, DashboardResumen, DeudaTrabajador, MetodoConsumo, MetodoPago } from "@/core/types";
 import { LABEL_METODO } from "@/presentation/modules/productos/metodoUi";
 import { useToast } from "@/presentation/components/ui/Toast";
 
@@ -341,15 +341,23 @@ function DashboardConsumos({ rango, onError }: { rango: DateRange; onError: (m: 
       fecha: formatDateLima(r.fecha).slice(0, 5),
     })), [data]);
 
-  // Bar chart por método — normaliza a los 4 métodos y usa labels legibles.
+  // Bar chart por método — usa el método REAL de ingreso de dinero
+  // ("credito" = aún pendiente; los pagados vienen con efectivo/yape/depósito/
+  // descuento_salario según con qué se saldaron en trb_pagos).
   const porMetodo = useMemo(() => {
-    const acc: Record<MetodoConsumo, number> = { credito: 0, efectivo: 0, yape: 0, deposito: 0 };
+    const acc: Record<string, number> = {
+      efectivo: 0, yape: 0, deposito: 0, descuento_salario: 0, credito: 0,
+    };
     (data?.por_metodo ?? []).forEach((r) => {
-      if (r.metodo in acc) acc[r.metodo] = Number(r.valor);
+      acc[r.metodo] = (acc[r.metodo] ?? 0) + Number(r.valor);
     });
-    return (Object.keys(acc) as MetodoConsumo[]).map((m) => ({
-      metodo: LABEL_METODO[m], valor: acc[m],
-    }));
+    const orden: Array<MetodoConsumo | MetodoPago> = ["efectivo", "yape", "deposito", "descuento_salario", "credito"];
+    return orden
+      .filter((m) => acc[m] > 0 || m === "credito")
+      .map((m) => ({
+        metodo: m === "credito" ? "Crédito (pendiente)" : LABEL_METODO[m],
+        valor: acc[m],
+      }));
   }, [data]);
 
   // Top deudas — ordena en cliente por seguridad (NUMERIC de Postgres viene como string).

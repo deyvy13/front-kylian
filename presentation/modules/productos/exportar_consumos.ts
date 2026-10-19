@@ -1,4 +1,4 @@
-import type { Consumo, MetodoConsumo } from "@/core/types";
+import type { Consumo, MetodoConsumo, MetodoPago } from "@/core/types";
 import { exportExcelMulti, type ColumnDef } from "@/core/lib/excel";
 import { limaWallDate } from "@/core/lib/utils";
 import { LABEL_METODO } from "./metodoUi";
@@ -57,29 +57,62 @@ export async function exportarConsumosExcel(
   });
   const hojaDeudasPorTrab = Array.from(mapDeudas.values()).sort((a, b) => b.total - a.total);
 
-  // ------ Hoja 3: TOTAL CONSUMOS (por método) ------
+  // ------ Hoja 3: TOTAL CONSUMOS (por método real de ingreso de dinero) ------
+  // Para los créditos ya pagados, se desdoblan según el método con el que se
+  // saldaron (pago_metodo). Si por algún motivo falta ese dato se agrupan en
+  // "Crédito — Ya pagado (sin detalle)".
   const totales: Record<string, number> = {
     efectivo: 0, yape: 0, deposito: 0,
-    credito_pagado: 0, credito_pendiente: 0,
+    credito_pendiente: 0,
+    credito_pagado_efectivo: 0, credito_pagado_yape: 0,
+    credito_pagado_deposito: 0, credito_pagado_descuento: 0,
+    credito_pagado_sin_detalle: 0,
   };
-  let cantConsumos = { efectivo: 0, yape: 0, deposito: 0, credito_pagado: 0, credito_pendiente: 0 };
+  const cantConsumos: Record<string, number> = {
+    efectivo: 0, yape: 0, deposito: 0,
+    credito_pendiente: 0,
+    credito_pagado_efectivo: 0, credito_pagado_yape: 0,
+    credito_pagado_deposito: 0, credito_pagado_descuento: 0,
+    credito_pagado_sin_detalle: 0,
+  };
+  const bucketPagoCredito = (m: MetodoPago | null): keyof typeof totales => {
+    switch (m) {
+      case "efectivo":          return "credito_pagado_efectivo";
+      case "yape":              return "credito_pagado_yape";
+      case "deposito":          return "credito_pagado_deposito";
+      case "descuento_salario": return "credito_pagado_descuento";
+      default:                  return "credito_pagado_sin_detalle";
+    }
+  };
   consumos.forEach((c) => {
     if (c.metodo_pago === "credito") {
-      if (c.pagado === 1) { totales.credito_pagado += Number(c.total); cantConsumos.credito_pagado++; }
-      else                { totales.credito_pendiente += Number(c.total); cantConsumos.credito_pendiente++; }
+      if (c.pagado === 1) {
+        const key = bucketPagoCredito(c.pago_metodo);
+        totales[key] += Number(c.total);
+        cantConsumos[key] += 1;
+      } else {
+        totales.credito_pendiente += Number(c.total);
+        cantConsumos.credito_pendiente += 1;
+      }
     } else {
       totales[c.metodo_pago] += Number(c.total);
-      cantConsumos[c.metodo_pago as keyof typeof cantConsumos]++;
+      cantConsumos[c.metodo_pago] = (cantConsumos[c.metodo_pago] ?? 0) + 1;
     }
   });
   const totalGeneral = Object.values(totales).reduce((a, v) => a + v, 0);
   const hojaTotal = [
-    { concepto: "Efectivo",                registros: cantConsumos.efectivo,          total: totales.efectivo },
-    { concepto: "Yape",                    registros: cantConsumos.yape,              total: totales.yape },
-    { concepto: "Depósito",                registros: cantConsumos.deposito,          total: totales.deposito },
-    { concepto: "Crédito — Ya pagado",     registros: cantConsumos.credito_pagado,    total: totales.credito_pagado },
-    { concepto: "Crédito — Pendiente",     registros: cantConsumos.credito_pendiente, total: totales.credito_pendiente },
-    { concepto: "TOTAL GENERAL",           registros: consumos.length,                total: totalGeneral },
+    { concepto: "Efectivo",                           registros: cantConsumos.efectivo,                   total: totales.efectivo },
+    { concepto: "Yape",                               registros: cantConsumos.yape,                       total: totales.yape },
+    { concepto: "Depósito",                           registros: cantConsumos.deposito,                   total: totales.deposito },
+    { concepto: "Crédito — Pagado en efectivo",       registros: cantConsumos.credito_pagado_efectivo,    total: totales.credito_pagado_efectivo },
+    { concepto: "Crédito — Pagado en yape",           registros: cantConsumos.credito_pagado_yape,        total: totales.credito_pagado_yape },
+    { concepto: "Crédito — Pagado en depósito",       registros: cantConsumos.credito_pagado_deposito,    total: totales.credito_pagado_deposito },
+    { concepto: "Crédito — Pagado por descuento salario", registros: cantConsumos.credito_pagado_descuento, total: totales.credito_pagado_descuento },
+    ...(cantConsumos.credito_pagado_sin_detalle > 0
+        ? [{ concepto: "Crédito — Ya pagado (sin detalle)", registros: cantConsumos.credito_pagado_sin_detalle, total: totales.credito_pagado_sin_detalle }]
+        : []),
+    { concepto: "Crédito — Pendiente",                registros: cantConsumos.credito_pendiente,          total: totales.credito_pendiente },
+    { concepto: "TOTAL GENERAL",                      registros: consumos.length,                         total: totalGeneral },
   ];
 
   // ------ Hoja 4: DETALLE TOTAL CONSUMOS (agrupado por trabajador + tipo) ------

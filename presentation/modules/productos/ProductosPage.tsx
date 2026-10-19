@@ -493,7 +493,7 @@ function TabConsumos() {
                 <Tr>
                   <Th>Fecha</Th><Th>Trabajador</Th><Th>Producto</Th>
                   <Th>Cantidad</Th><Th>Total</Th>
-                  <Th>Método</Th><Th>Estado</Th>
+                  <Th>Método</Th><Th>Estado</Th><Th>Pagado con</Th>
                   <Th className="text-right">Acciones</Th>
                 </Tr>
               </Thead>
@@ -539,6 +539,13 @@ function TabConsumos() {
                             ? <span className="text-xs font-semibold text-[color:var(--danger)]">Pendiente</span>
                             : <span className="text-xs font-semibold text-[color:var(--success)]">Pagado</span>
                           : <span className="text-xs text-foreground/60">—</span>}
+                      </Td>
+                      <Td>
+                        {c.pago_metodo ? (
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${CHIP_METODO[c.pago_metodo]}`}>
+                            {LABEL_METODO[c.pago_metodo]}
+                          </span>
+                        ) : <span className="text-xs text-foreground/40">—</span>}
                       </Td>
                       <Td>
                         <div className="flex justify-end">
@@ -593,13 +600,18 @@ function TabConsumos() {
                     </p>
                   </div>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${CHIP_METODO[c.metodo_pago]}`}>
                         {LABEL_METODO[c.metodo_pago]}
                       </span>
                       {esCredito && (
                         <span className={`text-[11px] font-semibold ${pendiente ? "text-[color:var(--danger)]" : "text-[color:var(--success)]"}`}>
                           {pendiente ? "Pendiente" : "Pagado"}
+                        </span>
+                      )}
+                      {c.pago_metodo && (
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${CHIP_METODO[c.pago_metodo]}`}>
+                          Pagado con {LABEL_METODO[c.pago_metodo]}
                         </span>
                       )}
                     </div>

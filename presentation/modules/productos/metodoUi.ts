@@ -5,7 +5,7 @@ export const LABEL_METODO: Record<MetodoConsumo | MetodoPago, string> = {
   efectivo:           "Efectivo",
   yape:               "Yape",
   deposito:           "Depósito",
-  descuento_salario:  "Desc. salario",
+  descuento_salario:  "Descuento salario",
 };
 
 export const CHIP_METODO: Record<MetodoConsumo | MetodoPago, string> = {
